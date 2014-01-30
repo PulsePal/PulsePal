@@ -22,13 +22,16 @@
 // Trigger line level configuration (0 = default high, trigger low (versions with optocoupler). 1 = default low, trigger high.)
 #define TriggerLevel 0
 
+
+// Firmware build number
+unsigned long FirmwareVersion = 4;
+
 // initialize LCD library with the numbers of the interface pins
 // Pins matched with hello world LCD sketch
 //LiquidCrystal lcd(12, 13, 28, 29, 30, 31);
 LiquidCrystal lcd(14, 20, 9, 8, 7, 6);
+
 // Variables that define system parameters
-//byte OutputLines[4] = {16,17,18,19}; // Output lines
-//byte OutputLineBits[4] = {6, 5, 4, 3}; // for faster write times, "Bits" address the pins directly - low level ARM commands.
 byte InputLines[2] = {15,16};
 byte InputLineBits[2] = {0,1};
 byte OutputLEDLines[4] = {3,2,1,0}; // Output lines
@@ -236,11 +239,16 @@ void loop() {
   if (SerialUSB.available() > 0) {
     CommandByte = SerialUSB.read();
     switch (CommandByte) {
-      // Device ID Response
-      case 72: {SerialUSB.write(75); ConnectedToApp = 1;} break;
-
-      // Program the module - total program (faster than item-wise)
-      case 73: {
+      case 72: { // Handshake
+        SerialUSB.write(75); // Send 'K' (as in ok)
+        breakLong(FirmwareVersion); // Send 32-bit firmware version
+        SerialUSB.write(BrokenBytes[0]);
+        SerialUSB.write(BrokenBytes[1]);
+        SerialUSB.write(BrokenBytes[2]);
+        SerialUSB.write(BrokenBytes[3]); 
+        ConnectedToApp = 1;
+      } break;
+      case 73: { // Program the module - total program (faster than item-wise)
         digitalWrite(LEDLine, HIGH); //
         for (int x = 0; x < 4; x++) {
           Phase1Duration[x] = SerialReadLong();
@@ -909,15 +917,6 @@ unsigned long SerialReadLong() {
   return OutputLong;
 }
 
-unsigned long Bytes2Long(byte Highest, byte High, byte Low, byte Lowest) 
-{
-    unsigned long OutputVal = 0;
-    
-    // Compute
-    
-    return OutputVal;
-}
-
 byte* Long2Bytes(long LongInt2Break) {
   byte Output[4] = {0};
   return Output;
@@ -1168,8 +1167,8 @@ void RefreshChannelMenu(int ThisChannel) {
         case 2: {write2Screen("Output Channels","<  Channel 2  >");} break;
         case 3: {write2Screen("Output Channels","<  Channel 3  >");} break;
         case 4: {write2Screen("Output Channels","<  Channel 4  >");} break;
-        case 5: {write2Screen("Input Channels","<  Channel 1  >");} break;
-        case 6: {write2Screen("Input Channels","<  Channel 2  >");} break;
+        case 5: {write2Screen("Trigger Channels","<  Channel 1  >");} break;
+        case 6: {write2Screen("Trigger Channels","<  Channel 2  >");} break;
         case 7: {write2Screen("<Click to exit>"," ");} break;
   }
 }
@@ -1187,9 +1186,9 @@ void RefreshActionMenu(int ThisAction) {
           case 10: {write2Screen("<Burst Interval>",FormatNumberForDisplay(BurstInterval[SelectedChannel-1], 1));} break;
           case 11: {write2Screen("< Train Delay  >",FormatNumberForDisplay(StimulusTrainDelay[SelectedChannel-1], 1));} break;
           case 12: {write2Screen("<Train Duration>",FormatNumberForDisplay(StimulusTrainDuration[SelectedChannel-1], 1));} break;
-          case 13: {write2Screen("<Follow input 1>",FormatNumberForDisplay(bitRead(TriggerAddress[0], SelectedChannel-1), 3));} break;
-          case 14: {write2Screen("<Follow input 2>",FormatNumberForDisplay(bitRead(TriggerAddress[1], SelectedChannel-1), 3));} break; 
-          case 15: {write2Screen("<Custom Stim ID>",FormatNumberForDisplay(FollowsCustomStimID[SelectedChannel-1], 0));} break;
+          case 13: {write2Screen("<Link Trigger 1>",FormatNumberForDisplay(bitRead(TriggerAddress[0], SelectedChannel-1), 3));} break;
+          case 14: {write2Screen("<Link Trigger 2>",FormatNumberForDisplay(bitRead(TriggerAddress[1], SelectedChannel-1), 3));} break; 
+          case 15: {write2Screen("<Custom Train# >",FormatNumberForDisplay(FollowsCustomStimID[SelectedChannel-1], 0));} break;
           case 16: {write2Screen("<Custom Target >",FormatNumberForDisplay(CustomStimTarget[SelectedChannel-1], 4));} break;
           case 17: {write2Screen("<     Exit     >"," ");} break;
      }

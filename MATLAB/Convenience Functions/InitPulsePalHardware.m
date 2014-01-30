@@ -90,7 +90,12 @@ while PulsePalSystem.SerialPort.BytesAvailable == 0
             break;
         end
 end
-fread(PulsePalSystem.SerialPort, 1);
+HandShakeOkByte = fread(PulsePalSystem.SerialPort, 1);
+if HandShakeOkByte == 75
+    PulsePalSystem.FirmwareVersion = fread(PulsePalSystem.SerialPort, 1, 'uint32');
+else
+    disp('Error: Pulse Pal returned an incorrect handshake signature.')
+end
 LastComPortUsed = Ports{Found};
 save(LastPortPath, 'LastComPortUsed');
 disp(['Pulse Pal connected on port ' Ports{Found}])
