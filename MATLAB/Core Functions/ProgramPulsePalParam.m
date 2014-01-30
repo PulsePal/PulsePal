@@ -48,7 +48,6 @@ end
 
 % Import virtual serial port object into this workspace from base
 global PulsePalSystem;
-Channel = Channel - 1; % Convert channel for 0 indexing
 
 % Determine whether data is time data
 if (ParamCode < 12) && (ParamCode > 3)

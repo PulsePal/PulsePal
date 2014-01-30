@@ -287,6 +287,7 @@ void loop() {
         inByte2 = SerialUSB.read();
         while (SerialUSB.available() == 0) {} 
         inByte3 = SerialUSB.read(); // inByte3 = channel (1-4)
+        inByte3 = inByte3 - 1; // Convert channel for zero-indexing
         switch (inByte2) { 
            case 1: {while (SerialUSB.available() == 0) {} IsBiphasic[inByte3] = SerialUSB.read();} break;
            case 2: {while (SerialUSB.available() == 0) {} Phase1Voltage[inByte3] = SerialUSB.read();} break;
@@ -370,26 +371,29 @@ void loop() {
         }
       } break;
       case 78: { 
-        while (SerialUSB.available() == 0) {}
-        delay(100);
         lcd.clear();
-        // wait a bit for the entire message to arrive
          lcd.home(); 
+         byte ByteCount = 0;
         // read all the available characters
-        while (SerialUSB.available() > 0) {
+        while (SerialUSB.available() == 0) {}
+        inByte2 = SerialUSB.read(); // Total length of message to follow (including newline)
+        while (ByteCount < inByte2) {
             // display each character to the LCD
+            while (SerialUSB.available() == 0) {}
             inByte = SerialUSB.read();
             if (inByte != 254) {
-            lcd.write(inByte);
+              lcd.write(inByte);
             } else {
               lcd.setCursor(0, 1);
             }
+            ByteCount++;
         }
       } break;
       case 79: {
         // Write specific voltage to output channel (not a pulse train) 
         while (SerialUSB.available() == 0) {}
         inByte = SerialUSB.read();
+        inByte = inByte - 1; // Convert for zero-indexing
         while (SerialUSB.available() == 0) {}
         inByte2 = SerialUSB.read();
         DACValues[inByte] = inByte2;
@@ -439,6 +443,7 @@ void loop() {
       case 82:{
         while (SerialUSB.available() == 0) {}
         inByte2 = SerialUSB.read();
+        inByte2 = inByte2 - 1; // Convert for zero-indexing
         while (SerialUSB.available() == 0) {}
         inByte3 = SerialUSB.read();
         ContinuousLoopMode[inByte2] = inByte3;
