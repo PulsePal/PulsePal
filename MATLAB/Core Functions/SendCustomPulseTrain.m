@@ -19,7 +19,7 @@ else
 end
 
 % Sanity-check PulseTimes and voltages
-CandidateTimes = PulseTimes*1000000;
+CandidateTimes = uint32(PulseTimes*1000000);
 CandidateVoltages = Voltages;
 if (sum(CandidateTimes < 0) > 0)  
     error('Error: Custom pulse times must be positive');
@@ -30,8 +30,8 @@ end
 if ~IsTimeSequence(CandidateTimes)  
     error('Error: Custom pulse times must always increase');
 end
-if (sum(rem(CandidateTimes,100)) > 0)  
-    error('Error: Custom pulse times must be multiples of 0.0001 seconds');
+if (sum(rem(CandidateTimes,50)) > 0)  
+    error('Error: Custom pulse times must be multiples of 0.00005 seconds');
 end
 if (CandidateTimes(length(CandidateTimes)) > 3600000000) 
     0; error('Error: Custom pulse times must be < 3600 s');

@@ -4,10 +4,11 @@ function ConfirmBit = SendCustomWaveform(TrainID, SamplingPeriod, Voltages)
 % Voltages in volts, for each sample. The length of Voltages determines the number of samples in the waveform.
 
 % NOTE: Be sure to adjust the pulse duration on any channels using this train to match the SamplingPeriod argument!
+OriginalSamplingPeriod = SamplingPeriod;
 SamplingPeriod = SamplingPeriod*1000000;
 
-if rem(SamplingPeriod, 100) > 0
-    error('Error: sampling period must be a multiple of 0.0001 seconds')
+if rem(SamplingPeriod, 50) > 0
+    error('Error: sampling period must be a multiple of 0.00005 seconds')
 end
 
 global PulsePalSystem;
@@ -82,11 +83,11 @@ end
 ConfirmBit = fread(PulsePalSystem.SerialPort, 1);
 
 % Change sampling period of last matrix sent on all channels that use the custom stimulus and re-send
-PulsePalMatrix = PulsePalSystem.LastProgramSent;
+PulsePalMatrix = PulsePalSystem.CurrentProgram;
 if ~isempty(PulsePalMatrix)
-    TargetChannels = find(cell2mat(PulsePalMatrix(4:7,15))' == TrainID);
-    Phase1Durations = cell2mat(PulsePalMatrix(4:7,5))';
-    Phase1Durations(TargetChannels) = SamplingPeriod;
-    PulsePalMatrix(4:7,5) = num2cell(Phase1Durations);
-    ProgramPulsePalMatrix(PulsePalMatrix);
+    TargetChannels = find(cell2mat(PulsePalMatrix(15,2:5))' == TrainID);
+    Phase1Durations = cell2mat(PulsePalMatrix(5,2:5))';
+    Phase1Durations(TargetChannels) = OriginalSamplingPeriod;
+    PulsePalMatrix(5,2:5) = num2cell(Phase1Durations);
+    ProgramPulsePal(PulsePalMatrix);
 end

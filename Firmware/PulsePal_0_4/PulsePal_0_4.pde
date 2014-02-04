@@ -66,21 +66,20 @@ unsigned long Phase2Duration[4] = {0};
 unsigned long InterPulseInterval[4] = {0};
 unsigned long BurstDuration[4] = {0};
 unsigned long BurstInterval[4] = {0};
-unsigned long StimulusTrainDuration[4] = {0};
-unsigned long StimulusTrainDelay[4] = {0};
-int FollowsCustomStimID[4] = {0}; // If 0, uses above params. If 1 or 2, triggering plays back timestamps in CustomTrain1 or CustomTrain2 with pulsewidth defined as usual
-int CustomStimTarget[4] = {0}; // If 0, custom stim timestamps are start-times of pulses. If 1, custom stim timestamps are start-times of bursts.
-int CustomStimLoop[4] = {0}; // if 0, custom stim plays once. If 1, custom stim loops until StimulusTrainDuration.
+unsigned long PulseTrainDuration[4] = {0};
+unsigned long PulseTrainDelay[4] = {0};
+int CustomTrainID[4] = {0}; // If 0, uses above params. If 1 or 2, triggering plays back timestamps in CustomTrain1 or CustomTrain2 with pulsewidth defined as usual
+int CustomTrainTarget[4] = {0}; // If 0, custom stim timestamps are start-times of pulses. If 1, custom stim timestamps are start-times of bursts.
+int CustomTrainLoop[4] = {0}; // if 0, custom stim plays once. If 1, custom stim loops until PulseTrainDuration.
 int ConnectedToApp = 0; // 0 for none, 1 for MATLAB client, 2 for Labview client, 3 for Python client
 
 // Variables used in programming
-int TriggerAddress[2] = {0}; // This specifies in binary, which channels get triggered by inputs 1 and 2.
-int TriggerMode[2] = {0}; // if 0, "Normal mode", triggers on low to high transitions and ignores triggers until end of stimulus train. if 1, "Toggle mode", triggers on low to high and shuts off stimulus
+byte TriggerAddress[2][4] = {0}; // This specifies which output channels get triggered by trigger channel 1 (row 1) or trigger channel 2 (row 2)
+byte TriggerMode[2] = {0}; // if 0, "Normal mode", triggers on low to high transitions and ignores triggers until end of stimulus train. if 1, "Toggle mode", triggers on low to high and shuts off stimulus
 //train on next high to low. If 2, "Button mode", triggers on low to high and shuts off on high to low.
-int ReTriggerMode[2] = {0}; // 0=default. If 1, if an input line is still high when the pulse train ends, the pulse train is re-triggered.
 unsigned long TriggerButtonDebounce[2] = {0}; // In button mode, number of microseconds the line must be low before stopping the pulse train.
-int CustomStimTimestampIndex[4] = {0}; // Keeps track of the pulse number being played in custom stim condition
-unsigned long CustomStimNpulses[2] = {0}; // Number of pulses in the stimulus
+int CustomPulseTimeIndex[4] = {0}; // Keeps track of the pulse number being played in custom stim condition
+unsigned long CustomTrainNpulses[2] = {0}; // Number of pulses in the stimulus
 byte Phase1Voltage[4] = {0};
 byte Phase2Voltage[4] = {0};
 int ClickerX = 0; // Value of analog reads from X line of joystick input device
@@ -105,10 +104,8 @@ unsigned long PulseTrainTimestamps[4] = {0};
 unsigned long NextPulseTransitionTime[4] = {0}; // Stores next pulse-high or pulse-low timestamp for each channel
 unsigned long NextBurstTransitionTime[4] = {0}; // Stores next burst-on or burst-off timestamp for each channel
 unsigned long StimulusTrainEndTime[4] = {0}; // Stores time the stimulus train is supposed to end
-unsigned long CustomTrain1[1001] = {0};
-unsigned long CustomTrain2[1001] = {0};
-byte CustomVoltage1[1001] = {0};
-byte CustomVoltage2[1001] = {0};
+unsigned long CustomPulseTimes[2][1001] = {0};
+byte CustomVoltages[2][1001] = {0};
 unsigned long LastLoopTime = 0;
 byte FirstLoop = 1; // This determines whether this is the first loop execution of the stimulus train.
 int PulseStatus[4] = {0}; // This is 0 if not delivering a pulse, 1 if delivering.
@@ -125,8 +122,8 @@ boolean ContinuousLoopMode[4] = {0}; // If true, the channel loops its programme
 int AnalogValues[2] = {0};
 int SensorValue = 0;
 boolean Stimulating = 0; // true if ANY channel is stimulating. Used to shut down analog reads on joystick, USB com, etc. for increased precision.
+boolean WasStimulating = 0; // true if any channel was stimulating on the previous loop. Used to force a DAC write after all channels end their stimulation, to return lines to 0
 int nStimulatingChannels = 0; // number of actively stimulating channels
-boolean ChangeFlag = 0; // true if any DAC line changed its value, requiring an update
 boolean DACFlags[4] = {0}; // true if an individual DAC needs to be updated
 byte DACValues[4] = {0};
 byte DefaultInputLevel = 0; // 0 for PulsePal 0.3, 1 for 0.2 and 0.1. Logic is inverted by optoisolator
@@ -201,23 +198,28 @@ void setup() {
 
 void loop() {
   if (Stimulating == 0) {
-  SystemTime = micros();
-  LastLoopTime = SystemTime;
-  UpdateSettingsMenu(inByte);
+    if (WasStimulating) {
+      WasStimulating = 0;
+      dacWrite(DACValues);
+    }
+      SystemTime = micros();
+      LastLoopTime = SystemTime;
+      UpdateSettingsMenu(inByte);
    } else {
-     // Make sure loop runs once every 50us
-    while ((SystemTime-LastLoopTime) < 50) {
-       SystemTime = micros();
-     }
-    LastLoopTime = SystemTime;
-      // Write to DACs
-    dacWrite(DACValues);
-     ClickerButtonState = digitalRead(ClickerButtonLine);
+     WasStimulating = 1;
+       // Make sure loop runs once every 50us
+      while ((SystemTime-LastLoopTime) < 50) {
+         SystemTime = micros();
+       }
+      LastLoopTime = SystemTime;
+        // Write to DACs
+      dacWrite(DACValues);
+       ClickerButtonState = digitalRead(ClickerButtonLine);
      if (ClickerButtonState == LOW){    // A button click ends ongoing stimulation on all channels.
        for (int x = 0; x < 4; x++) {
           StimulusStatus[x] = 0;
           PulseStatus[x] = 0;
-          CustomStimTimestampIndex[x] = 0;
+          CustomPulseTimeIndex[x] = 0;
           BurstStatus[x] = 0;
           DACValues[x] = 128; 
           gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], LOW);
@@ -248,7 +250,7 @@ void loop() {
         SerialUSB.write(BrokenBytes[3]); 
         ConnectedToApp = 1;
       } break;
-      case 73: { // Program the module - total program (faster than item-wise)
+      case 73: { // Program the module - total program (faster than item-wise in some instances)
         digitalWrite(LEDLine, HIGH); //
         for (int x = 0; x < 4; x++) {
           Phase1Duration[x] = SerialReadLong();
@@ -257,27 +259,30 @@ void loop() {
           InterPulseInterval[x] = SerialReadLong();
           BurstDuration[x] = SerialReadLong();
           BurstInterval[x] = SerialReadLong();
-          StimulusTrainDuration[x] = SerialReadLong();
-          StimulusTrainDelay[x] = SerialReadLong();
+          PulseTrainDuration[x] = SerialReadLong();
+          PulseTrainDelay[x] = SerialReadLong();
         }
         for (int x = 0; x < 4; x++) {
           while (SerialUSB.available() == 0) {} IsBiphasic[x] = SerialUSB.read();
           while (SerialUSB.available() == 0) {} Phase1Voltage[x] = SerialUSB.read();
           while (SerialUSB.available() == 0) {} Phase2Voltage[x] = SerialUSB.read();
-          while (SerialUSB.available() == 0) {} FollowsCustomStimID[x] = SerialUSB.read();
-          while (SerialUSB.available() == 0) {} CustomStimTarget[x] = SerialUSB.read();
-          while (SerialUSB.available() == 0) {} CustomStimLoop[x] = SerialUSB.read();
+          while (SerialUSB.available() == 0) {} CustomTrainID[x] = SerialUSB.read();
+          while (SerialUSB.available() == 0) {} CustomTrainTarget[x] = SerialUSB.read();
+          while (SerialUSB.available() == 0) {} CustomTrainLoop[x] = SerialUSB.read();
         }
-       while (SerialUSB.available() == 0) {} TriggerAddress[0] = SerialUSB.read(); 
-       while (SerialUSB.available() == 0) {} TriggerAddress[1] = SerialUSB.read(); 
+       for (int x = 0; x < 2; x++) { // Read 8 trigger address bytes
+         for (int y = 0; y < 4; y++) {
+           while (SerialUSB.available() == 0) {} TriggerAddress[x][y] = SerialUSB.read();
+         }
+       }
        while (SerialUSB.available() == 0) {} TriggerMode[0] = SerialUSB.read(); 
        while (SerialUSB.available() == 0) {} TriggerMode[1] = SerialUSB.read();
        SerialUSB.write(1); // Send confirm byte
        digitalWrite(LEDLine, LOW);
        for (int x = 0; x < 4; x++) {
          if ((BurstDuration[x] == 0) || (BurstInterval[x] == 0)) {UsesBursts[x] = false;} else {UsesBursts[x] = true;}
-         if (CustomStimTarget[x] == 1) {UsesBursts[x] = true;}
-         if ((FollowsCustomStimID[x] > 0) && (CustomStimTarget[x] == 0)) {UsesBursts[x] = false;}
+         if (CustomTrainTarget[x] == 1) {UsesBursts[x] = true;}
+         if ((CustomTrainID[x] > 0) && (CustomTrainTarget[x] == 0)) {UsesBursts[x] = false;}
        }
       } break;
       
@@ -298,19 +303,19 @@ void loop() {
            case 7: {InterPulseInterval[inByte3] = SerialReadLong();} break;
            case 8: {BurstDuration[inByte3] = SerialReadLong();} break;
            case 9: {BurstInterval[inByte3] = SerialReadLong();} break;
-           case 10: {StimulusTrainDuration[inByte3] = SerialReadLong();} break;
-           case 11: {StimulusTrainDelay[inByte3] = SerialReadLong();} break;
-           case 12: {while (SerialUSB.available() == 0) {} inByte4 = SerialUSB.read(); bitWrite(TriggerAddress[0], inByte3, inByte4);} break;
-           case 13: {while (SerialUSB.available() == 0) {} inByte4 = SerialUSB.read(); bitWrite(TriggerAddress[1], inByte3, inByte4);} break;
-           case 14: {while (SerialUSB.available() == 0) {} FollowsCustomStimID[inByte3] = SerialUSB.read();} break;
-           case 15: {while (SerialUSB.available() == 0) {} CustomStimTarget[inByte3] = SerialUSB.read();} break;
-           case 16: {while (SerialUSB.available() == 0) {} CustomStimLoop[inByte3] = SerialUSB.read();} break;
+           case 10: {PulseTrainDuration[inByte3] = SerialReadLong();} break;
+           case 11: {PulseTrainDelay[inByte3] = SerialReadLong();} break;
+           case 12: {while (SerialUSB.available() == 0) {} inByte4 = SerialUSB.read(); TriggerAddress[0][inByte3] = inByte4;} break;
+           case 13: {while (SerialUSB.available() == 0) {} inByte4 = SerialUSB.read(); TriggerAddress[1][inByte3] = inByte4;} break;
+           case 14: {while (SerialUSB.available() == 0) {} CustomTrainID[inByte3] = SerialUSB.read();} break;
+           case 15: {while (SerialUSB.available() == 0) {} CustomTrainTarget[inByte3] = SerialUSB.read();} break;
+           case 16: {while (SerialUSB.available() == 0) {} CustomTrainLoop[inByte3] = SerialUSB.read();} break;
            case 128: {while (SerialUSB.available() == 0) {} TriggerMode[inByte3] = SerialUSB.read();} break;
         }
         if (inByte2 < 14) {
           if ((BurstDuration[inByte3] == 0) || (BurstInterval[inByte3] == 0)) {UsesBursts[inByte3] = false;} else {UsesBursts[inByte3] = true;}
-          if (CustomStimTarget[inByte3] == 1) {UsesBursts[inByte3] = true;}
-          if ((FollowsCustomStimID[inByte3] > 0) && (CustomStimTarget[inByte3] == 0)) {UsesBursts[inByte3] = false;}
+          if (CustomTrainTarget[inByte3] == 1) {UsesBursts[inByte3] = true;}
+          if ((CustomTrainID[inByte3] > 0) && (CustomTrainTarget[inByte3] == 0)) {UsesBursts[inByte3] = false;}
         }
         SerialUSB.write(1); // Send confirm byte
       } break;
@@ -320,17 +325,17 @@ void loop() {
         digitalWrite(LEDLine, HIGH); //
         while (SerialUSB.available() == 0) {}
         USBPacketCorrectionByte = SerialUSB.read();
-        CustomStimNpulses[0] = SerialReadLong();
-        for (int x = 0; x < CustomStimNpulses[0]; x++) {
-          CustomTrain1[x] = SerialReadLong();
+        CustomTrainNpulses[0] = SerialReadLong();
+        for (int x = 0; x < CustomTrainNpulses[0]; x++) {
+          CustomPulseTimes[0][x] = SerialReadLong();
         }
-        for (int x = 0; x < CustomStimNpulses[0]; x++) {
+        for (int x = 0; x < CustomTrainNpulses[0]; x++) {
           while (SerialUSB.available() == 0) {} 
-          CustomVoltage1[x] = SerialUSB.read();
+          CustomVoltages[0][x] = SerialUSB.read();
         }
         if (USBPacketCorrectionByte == 1) {
           USBPacketCorrectionByte = 0;
-          CustomStimNpulses[0] = CustomStimNpulses[0]  - 1;
+          CustomTrainNpulses[0] = CustomTrainNpulses[0]  - 1;
         }
         SerialUSB.write(1); // Send confirm byte
         digitalWrite(LEDLine, LOW); //
@@ -340,17 +345,17 @@ void loop() {
         digitalWrite(LEDLine, HIGH); //
         while (SerialUSB.available() == 0) {}
         USBPacketCorrectionByte = SerialUSB.read();
-        CustomStimNpulses[1] = SerialReadLong();
-        for (int x = 0; x < CustomStimNpulses[1]; x++) {
-          CustomTrain2[x] = SerialReadLong();
+        CustomTrainNpulses[1] = SerialReadLong();
+        for (int x = 0; x < CustomTrainNpulses[1]; x++) {
+          CustomPulseTimes[1][x] = SerialReadLong();
         }
-        for (int x = 0; x < CustomStimNpulses[1]; x++) {
+        for (int x = 0; x < CustomTrainNpulses[1]; x++) {
           while (SerialUSB.available() == 0) {} 
-          CustomVoltage2[x] = SerialUSB.read();
+          CustomVoltages[1][x] = SerialUSB.read();
         }
         if (USBPacketCorrectionByte == 1) {
           USBPacketCorrectionByte = 0;
-          CustomStimNpulses[1] = CustomStimNpulses[1]  - 1;
+          CustomTrainNpulses[1] = CustomTrainNpulses[1]  - 1;
         }
         SerialUSB.write(1); // Send confirm byte
         digitalWrite(LEDLine, LOW); //
@@ -362,7 +367,7 @@ void loop() {
         for (int x = 0; x < 4; x++) {
           PreStimulusStatus[x] = bitRead(inByte2, x);
           if (PreStimulusStatus[x] == 1) {
-            if ((FollowsCustomStimID[x] > 0) && (CustomStimTarget[x] == 1)) {BurstStatus[x] = 0;} else {
+            if ((CustomTrainID[x] > 0) && (CustomTrainTarget[x] == 1)) {BurstStatus[x] = 0;} else {
                  BurstStatus[x] = 1; 
             }
           PrePulseTrainTimestamps[x] = SystemTime;
@@ -402,12 +407,7 @@ void loop() {
       } break;
       case 80: { // Soft-abort ongoing stimulation without disconnecting from client
        for (int x = 0; x < 4; x++) {
-        StimulusStatus[x] = 0;
-        PulseStatus[x] = 0;
-        CustomStimTimestampIndex[x] = 0;
-        BurstStatus[x] = 0;
-        DACValues[x] = 128; 
-        gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], LOW);
+        killChannel(x);
       }
       dacWrite(DACValues);
      } break;
@@ -415,12 +415,7 @@ void loop() {
         ConnectedToApp = 0;
         inMenu = 0;
         for (int x = 0; x < 4; x++) {
-          StimulusStatus[x] = 0;
-          PulseStatus[x] = 0;
-          CustomStimTimestampIndex[x] = 0;
-          BurstStatus[x] = 0;
-          DACValues[x] = 128; 
-          gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], LOW);
+          killChannel(x);
         }
         dacWrite(DACValues);
         // Store last program to EEPROM
@@ -515,6 +510,7 @@ void loop() {
 }
 
     // Read values of trigger pins
+    LineTriggerEvent[0] = 0; LineTriggerEvent[1] = 0;
     for (int x = 0; x < 2; x++) {
          //InputValues[x] = gpio_read_bit(INPUT_PIN_PORT, InputLineBits[x]);
          InputValues[x] = digitalRead(InputLines[x]);
@@ -523,227 +519,185 @@ void loop() {
          } else {
            gpio_write_bit(INPUT_PIN_PORT, InputLEDLineBits[x], LOW);
          }
-         if (ReTriggerMode[x] == 0) {
          // update LineTriggerEvent with logic representing logic transition
-           if ((InputValues[x] == TriggerLevel) && (InputValuesLastCycle[x] == DefaultInputLevel)) {
-             LineTriggerEvent[x] = 1;
-           }
-           InputValuesLastCycle[x] = InputValues[x];
-         } else {
-           if (TriggerLevel == 1) {
-             LineTriggerEvent[x] = InputValues[x];
-           } else {
-             LineTriggerEvent[x] = 1 - InputValues[x];
-           }
-         } 
-
+         if ((InputValues[x] == TriggerLevel) && (InputValuesLastCycle[x] == DefaultInputLevel)) {
+           LineTriggerEvent[x] = 1; // Low to high transition
+         } else if ((InputValues[x] == DefaultInputLevel) && (InputValuesLastCycle[x] == TriggerLevel)) {
+           LineTriggerEvent[x] = 2; // High to low transition
+         }
+         InputValuesLastCycle[x] = InputValues[x];
     }
        
     for (int x = 0; x < 4; x++) {
-       // Adjust StimulusStatus to reflect new changes
-       if ((StimulusStatus[x] == 0) && (PreStimulusStatus[x] == 0) && bitRead(TriggerAddress[0], x) && LineTriggerEvent[0] == 1) {
-         PreStimulusStatus[x] = 1; BurstStatus[x] = 1; PrePulseTrainTimestamps[x] = SystemTime; NextBurstTransitionTime[x] = (SystemTime + StimulusTrainDelay[x] + 1000); FirstLoop = 1; PulseStatus[x] = 0; 
-       }
-       if ((StimulusStatus[x] == 0) && (PreStimulusStatus[x] == 0) && bitRead(TriggerAddress[1], x) && LineTriggerEvent[1] == 1) {
-         PreStimulusStatus[x] = 1; BurstStatus[x] = 1; PrePulseTrainTimestamps[x] = SystemTime; NextBurstTransitionTime[x] = (SystemTime + StimulusTrainDelay[x] + 1000); FirstLoop = 1; PulseStatus[x] = 0;
-       }
-       // If Toggle mode is active, shut down any governed channels that are already active
+      byte KillChannel = 0;
+       // If trigger channels are in toggle mode and a trigger arrived, or in gated mode and line is low, shut down any governed channels that are playing a pulse train
        if (((StimulusStatus[x] == 1) || (PreStimulusStatus[x] == 1))) {
-        if (bitRead(TriggerAddress[0], x) && (LineTriggerEvent[0] == 1) && (PrePulseTrainTimestamps[x] != SystemTime) && (ReTriggerMode[0] == 0)) {
-           if (TriggerMode[0] == 1) {
-             PreStimulusStatus[x] = 0;
-             StimulusStatus[x] = 0;
-             CustomStimTimestampIndex[x] = 0;
-             PulseStatus[x] = 0;
-             DACValues[x] = 128;
-             gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], LOW);
-           }
-         }
-         if (bitRead(TriggerAddress[1], x) && (LineTriggerEvent[1] == 1) && (PrePulseTrainTimestamps[x] != SystemTime) && (ReTriggerMode[1] == 0)) {
-           if (TriggerMode[1] == 1) {
-             PreStimulusStatus[x] = 0;
-             StimulusStatus[x] = 0;
-             CustomStimTimestampIndex[x] = 0;
-             PulseStatus[x] = 0;
-             DACValues[x] = 128;
-             gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], LOW);
-           }
-         } 
+          for (int y = 0; y < 2; y++) {
+            if (TriggerAddress[y][x]) {
+                if ((TriggerMode[y] == 1) && (LineTriggerEvent[y] == 1)) {
+                     KillChannel = 1;
+                }
+                if ((TriggerMode[y] == 2) && (LineTriggerEvent[y] == 2)) {
+                    if (TriggerMode[1-y] == 2) {
+                      if (InputValues[1-y] == DefaultInputLevel) {
+                        KillChannel = 1;
+                      }
+                    } else {
+                      KillChannel = 1;
+                    }
+                }
+            }
+          }   
+          if (KillChannel) {
+             killChannel(x);
+          }
+        
+      } else {
+       // Adjust StimulusStatus to reflect any new trigger events
+       if (TriggerAddress[0][x] && (LineTriggerEvent[0] == 1)) {
+         PreStimulusStatus[x] = 1; BurstStatus[x] = 1; PrePulseTrainTimestamps[x] = SystemTime; NextBurstTransitionTime[x] = (SystemTime + PulseTrainDelay[x] + 1000); FirstLoop = 1; PulseStatus[x] = 0; 
        }
+       if (TriggerAddress[1][x] && (LineTriggerEvent[1] == 1)) {
+         PreStimulusStatus[x] = 1; BurstStatus[x] = 1; PrePulseTrainTimestamps[x] = SystemTime; NextBurstTransitionTime[x] = (SystemTime + PulseTrainDelay[x] + 1000); FirstLoop = 1; PulseStatus[x] = 0;
+       }
+      }
     }
-    LineTriggerEvent[0] = 0; LineTriggerEvent[1] = 0;
+    
      Stimulating = 0; // null condition, will be overridden in loop if any channels are still stimulating.
-     ChangeFlag = false;
     // Check clock and adjust line levels for new time as per programming
     for (int x = 0; x < 4; x++) {
       if (PreStimulusStatus[x] == 1) {
-        if (SystemTime >= (PrePulseTrainTimestamps[x] + StimulusTrainDelay[x])) {
+        if (SystemTime >= (PrePulseTrainTimestamps[x] + PulseTrainDelay[x])) {
           PreStimulusStatus[x] = 0;
           StimulusStatus[x] = 1;
           PulseStatus[x] = 0;
           PulseTrainTimestamps[x] = SystemTime;
-          StimulusTrainEndTime[x] = SystemTime + StimulusTrainDuration[x];
-          if (CustomStimTarget[x] == 1)  {
-            if (FollowsCustomStimID[x] == 1) {
-              NextBurstTransitionTime[x] = SystemTime + CustomTrain1[0];
+          StimulusTrainEndTime[x] = SystemTime + PulseTrainDuration[x];
+          if (CustomTrainTarget[x] == 1)  {
+            if (CustomTrainID[x] == 1) {
+              NextBurstTransitionTime[x] = SystemTime + CustomPulseTimes[0][0];
             } else {
-              NextBurstTransitionTime[x] = SystemTime + CustomTrain2[0];
+              NextBurstTransitionTime[x] = SystemTime + CustomPulseTimes[1][0];
             }
             BurstStatus[x] = 0;
           } else {
           NextBurstTransitionTime[x] = SystemTime+BurstDuration[x];
           }
-          if (FollowsCustomStimID[x] == 0) {
-            NextPulseTransitionTime[x] = SystemTime;
+          if (CustomTrainID[x] == 0) {
+            NextPulseTransitionTime[x] = SystemTime-25; // -25 ensures that despite 4us jitter, the next multiple of 50us timestamp will be read properly.
             DACValues[x] = Phase1Voltage[x];
-          } else if (FollowsCustomStimID[x] == 1) {
-            NextPulseTransitionTime[x] = SystemTime + CustomTrain1[0]; 
+          } else if (CustomTrainID[x] == 1) {
+            NextPulseTransitionTime[x] = SystemTime + CustomPulseTimes[0][0] -25; 
           } else {
-            NextPulseTransitionTime[x] = SystemTime + CustomTrain2[0];
+            NextPulseTransitionTime[x] = SystemTime + CustomPulseTimes[1][0] -25;
           }
         }
       }
       if (StimulusStatus[x] == 1) { // if this output line has been triggered and is delivering a stimulus
       Stimulating = 1;
-        if (BurstStatus[x] == 1) { // if this output line is currently delivering a burst
+      int thisTrainID = CustomTrainID[x];
+      int thisTrainIDIndex = thisTrainID-1;
+        if (BurstStatus[x] == 1) { // if this output line is currently gated "on"
           switch (PulseStatus[x]) { // depending on the phase of the pulse
           
            case 0: { // if this is the inter-pulse interval
             // determine if the next pulse should start now
-            if ((FollowsCustomStimID[x] == 0) || ((FollowsCustomStimID[x] > 0) && (CustomStimTarget[x] == 1))) {
+            if ((CustomTrainID[x] == 0) || ((CustomTrainID[x] > 0) && (CustomTrainTarget[x] == 1))) {
               if (SystemTime >= NextPulseTransitionTime[x]) {
                 NextPulseTransitionTime[x] = SystemTime + (Phase1Duration[x] - (SystemTime - NextPulseTransitionTime[x]));
                 if ((NextPulseTransitionTime[x] - SystemTime) <= (StimulusTrainEndTime[x] - SystemTime)) { // so that it doesn't start a pulse it can't finish due to pulse train end
                   if (!((UsesBursts[x] == 1) && (NextPulseTransitionTime[x] >= NextBurstTransitionTime[x]))){ // so that it doesn't start a pulse it can't finish due to burst end
                     PulseStatus[x] = 1;
                     gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], HIGH);
-                    if ((FollowsCustomStimID[x] > 0) && (CustomStimTarget[x] == 1)) {
-                      DACValues[x] = CustomVoltage1[CustomStimTimestampIndex[x]];
+                    if ((CustomTrainID[x] > 0) && (CustomTrainTarget[x] == 1)) {
+                      DACValues[x] = CustomVoltages[thisTrainIDIndex][CustomPulseTimeIndex[x]];
                     } else {
                       DACValues[x] = Phase1Voltage[x]; 
                     }
                   }
+                 }
                 }
-              }
-            } else if (FollowsCustomStimID[x] == 1) {
+              } else {
                if (SystemTime >= NextPulseTransitionTime[x]) {
-                 int SkipNextPulse = 0;
-                 if ((CustomStimLoop[x] == 1) && (CustomStimTimestampIndex[x] == CustomStimNpulses[0])) {
-                        CustomStimTimestampIndex[x] = 0;
-                        PulseTrainTimestamps[x] = SystemTime-25; // ensures that despite 4us jitter, the next multiple of 50us timestamp will be read properly. 
-                 }
-                 if (CustomStimTimestampIndex[x] < CustomStimNpulses[0]) {
-                   if ((CustomTrain1[CustomStimTimestampIndex[x]+1] - CustomTrain1[CustomStimTimestampIndex[x]]) > Phase1Duration[x]) {
-                     NextPulseTransitionTime[x] = SystemTime + (Phase1Duration[x] - (SystemTime - NextPulseTransitionTime[x]));
-                   } else {
-                     NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomTrain1[CustomStimTimestampIndex[x]+1];  
-                     SkipNextPulse = 1;
-                   }
-                 }
-                 if (SkipNextPulse == 0) {
-                    PulseStatus[x] = 1;
-                 }
-                 DACValues[x] = CustomVoltage1[CustomStimTimestampIndex[x]];
-                 gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], HIGH);
-                   if (IsBiphasic[x] == 0) {
-                      CustomStimTimestampIndex[x] = CustomStimTimestampIndex[x] + 1;
-                   }
-                 if (CustomStimTimestampIndex[x] > (CustomStimNpulses[0])){
-                   CustomStimTimestampIndex[x] = 0;
-                   if (CustomStimLoop[x] == 0) {
-                     StimulusStatus[x] = 0;
-                     PulseStatus[x] = 0;
-                     DACValues[x] = 128;
-                     gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], LOW);
-                   }
-                 }
-               } 
-            } else if (FollowsCustomStimID[x] == 2) {
-               if (SystemTime >= NextPulseTransitionTime[x]) {
-                 int SkipNextPulse = 0;
-                 if ((CustomStimLoop[x] == 1) && (CustomStimTimestampIndex[x] == CustomStimNpulses[1])) {
-                        CustomStimTimestampIndex[x] = 0;
-                        PulseTrainTimestamps[x] = SystemTime-25; // ensures that despite 4us jitter, the next multiple of 50us timestamp will be read properly. 
-                 }
-                 if (CustomStimTimestampIndex[x] < CustomStimNpulses[1]) {
-                   if ((CustomTrain2[CustomStimTimestampIndex[x]+1] - CustomTrain2[CustomStimTimestampIndex[x]]) > Phase1Duration[x]) {
-                     NextPulseTransitionTime[x] = SystemTime + (Phase1Duration[x] - (SystemTime - NextPulseTransitionTime[x]));
-                   } else {
-                     NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomTrain2[CustomStimTimestampIndex[x]+1];  
-                     SkipNextPulse = 1;
-                   }
-                 }
-                 if (SkipNextPulse == 0) {
-                 PulseStatus[x] = 1;
-                 }
-                 gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], HIGH);
-                  DACValues[x] = CustomVoltage2[CustomStimTimestampIndex[x]];
-                   if (IsBiphasic[x] == 0) {
-                      CustomStimTimestampIndex[x] = CustomStimTimestampIndex[x] + 1;
-                   }
-                 if (CustomStimTimestampIndex[x] > (CustomStimNpulses[1])){
-                   CustomStimTimestampIndex[x] = 0;
-                   if (CustomStimLoop[x] == 0) {
-                     StimulusStatus[x] = 0;
-                     PulseStatus[x] = 0;
-                     DACValues[x] = 128;
-                     gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], LOW);
-                   }
-                 }
-               }
-              }
+                     int SkipNextInterval = 0;
+                     if ((CustomTrainLoop[x] == 1) && (CustomPulseTimeIndex[x] == CustomTrainNpulses[thisTrainIDIndex])) {
+                            CustomPulseTimeIndex[x] = 0;
+                            PulseTrainTimestamps[x] = SystemTime-25; // ensures that despite 4us jitter, the next multiple of 50us timestamp will be read properly. 
+                     }
+                     if (CustomPulseTimeIndex[x] < CustomTrainNpulses[thisTrainIDIndex]) {
+                       if ((CustomPulseTimes[thisTrainIDIndex][CustomPulseTimeIndex[x]+1] - CustomPulseTimes[thisTrainIDIndex][CustomPulseTimeIndex[x]]) > Phase1Duration[x]) {
+                         NextPulseTransitionTime[x] = SystemTime - 25 + (Phase1Duration[x] - (SystemTime - NextPulseTransitionTime[x]));
+                       } else {
+                         NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[thisTrainIDIndex][CustomPulseTimeIndex[x]+1];  
+                         SkipNextInterval = 1;
+                       }
+                     }
+                     if (SkipNextInterval == 0) {
+                        PulseStatus[x] = 1;
+                     }
+                     DACValues[x] = CustomVoltages[thisTrainIDIndex][CustomPulseTimeIndex[x]];
+                     gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], HIGH);
+                     if (IsBiphasic[x] == 0) {
+                        CustomPulseTimeIndex[x] = CustomPulseTimeIndex[x] + 1;
+                     }
+                     if (CustomPulseTimeIndex[x] > (CustomTrainNpulses[thisTrainIDIndex])){
+                       CustomPulseTimeIndex[x] = 0;
+                       if (CustomTrainLoop[x] == 0) {
+                         killChannel(x);
+                       }
+                     }
+                  }
+              } 
             } break;
             
             case 1: { // if this is the first phase of the pulse
              // determine if this phase should end now
              if (SystemTime > NextPulseTransitionTime[x]) {
                 if (IsBiphasic[x] == 0) {
-                  if (FollowsCustomStimID[x] == 0) {
+                  if (CustomTrainID[x] == 0) {
                       NextPulseTransitionTime[x] = SystemTime + (InterPulseInterval[x] - (SystemTime - NextPulseTransitionTime[x]));
-                  } else if (FollowsCustomStimID[x] == 1) {
-                    if (CustomStimTarget[x] == 0) {
-                      NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomTrain1[CustomStimTimestampIndex[x]];
+                      PulseStatus[x] = 0;
+                      gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], LOW);
+                      DACValues[x] = 128; 
+                  } else {
+                    if (CustomTrainTarget[x] == 0) {
+                      NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[thisTrainIDIndex][CustomPulseTimeIndex[x]];
                     } else {
                       NextPulseTransitionTime[x] = SystemTime + (InterPulseInterval[x] - (SystemTime - NextPulseTransitionTime[x]));
                     }
-                  } else {
-                    if (CustomStimTarget[x] == 0) {
-                        NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomTrain2[CustomStimTimestampIndex[x]];
+                    if ((CustomTrainLoop[x] == 1) && (CustomPulseTimeIndex[x] == CustomTrainNpulses[thisTrainIDIndex])) {
+                            CustomPulseTimeIndex[x] = 0;
+                            PulseTrainTimestamps[x] = SystemTime - 25; // ensures that despite 4us jitter, the next multiple of 50us timestamp will be read properly. 
+                            DACValues[x] = CustomVoltages[thisTrainIDIndex][CustomPulseTimeIndex[x]];
+                            if ((CustomPulseTimes[thisTrainIDIndex][CustomPulseTimeIndex[x]+1] - CustomPulseTimes[thisTrainIDIndex][CustomPulseTimeIndex[x]]) > Phase1Duration[x]) {
+                              PulseStatus[x] = 1;
+                            } else {
+                              PulseStatus[x] = 0;
+                            }
+                            NextPulseTransitionTime[x] = SystemTime + (Phase1Duration[x] - (SystemTime - NextPulseTransitionTime[x]));
+                            CustomPulseTimeIndex[x] = CustomPulseTimeIndex[x] + 1;
                     } else {
-                        NextPulseTransitionTime[x] = SystemTime + (InterPulseInterval[x] - (SystemTime - NextPulseTransitionTime[x]));
+                      PulseStatus[x] = 0;
+                      gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], LOW);
+                      DACValues[x] = 128; 
                     }
                   }
-                  if (!((FollowsCustomStimID[x] == 0) && (InterPulseInterval[x] == 0))) { 
-                    PulseStatus[x] = 0;
-                    gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], LOW);
-                    DACValues[x] = 128; 
-                  } else {
-                   PulseStatus[x] = 1;
-                   NextPulseTransitionTime[x] = (NextPulseTransitionTime[x] - InterPulseInterval[x]) + (Phase1Duration[x]);
-                   DACValues[x] = Phase1Voltage[x]; 
-                  }
+     
                 } else {
                   if (InterPhaseInterval[x] == 0) {
                     NextPulseTransitionTime[x] = SystemTime + (Phase2Duration[x] - (SystemTime - NextPulseTransitionTime[x]));
                     PulseStatus[x] = 3;
-                    if (FollowsCustomStimID[x] == 0) {
-                    DACValues[x] = Phase2Voltage[x]; 
+                    if (CustomTrainID[x] == 0) {
+                      DACValues[x] = Phase2Voltage[x]; 
                     } else {
-                   if (FollowsCustomStimID[x] == 1) {
-                     if (CustomVoltage1[CustomStimTimestampIndex[x]] < 128) {
-                       DACValues[x] = 128 + (128 - CustomVoltage1[CustomStimTimestampIndex[x]]); 
+                      
+                     if (CustomVoltages[thisTrainIDIndex][CustomPulseTimeIndex[x]] < 128) {
+                       DACValues[x] = 128 + (128 - CustomVoltages[thisTrainIDIndex][CustomPulseTimeIndex[x]]); 
                      } else {
-                       DACValues[x] = 128 - (CustomVoltage1[CustomStimTimestampIndex[x]] - 128);
+                       DACValues[x] = 128 - (CustomVoltages[thisTrainIDIndex][CustomPulseTimeIndex[x]] - 128);
                      }
-                   } else {
-                     if (CustomVoltage1[CustomStimTimestampIndex[x]] < 128) {
-                       DACValues[x] = 128 + (128 - CustomVoltage2[CustomStimTimestampIndex[x]]); 
-                     } else {
-                       DACValues[x] = 128 - (CustomVoltage2[CustomStimTimestampIndex[x]]-128);
-                     } 
-                   }
-                   if (CustomStimTarget[x] == 0) {
-                       CustomStimTimestampIndex[x] = CustomStimTimestampIndex[x] + 1;
+                   if (CustomTrainTarget[x] == 0) {
+                       CustomPulseTimeIndex[x] = CustomPulseTimeIndex[x] + 1;
                    }
                     } 
                   } else {
@@ -758,60 +712,52 @@ void loop() {
                if (SystemTime > NextPulseTransitionTime[x]) {
                  NextPulseTransitionTime[x] = SystemTime + (Phase2Duration[x] - (SystemTime - NextPulseTransitionTime[x]));
                  PulseStatus[x] = 3;
-                 if (FollowsCustomStimID[x] == 0) {
+                 if (CustomTrainID[x] == 0) {
                  DACValues[x] = Phase2Voltage[x]; 
                  } else {
-                   if (FollowsCustomStimID[x] == 1) {
-                     if (CustomVoltage1[CustomStimTimestampIndex[x]] < 128) {
-                       DACValues[x] = 128 + (128 - CustomVoltage1[CustomStimTimestampIndex[x]]); 
+                   if (CustomTrainID[x] == 1) {
+                     if (CustomVoltages[0][CustomPulseTimeIndex[x]] < 128) {
+                       DACValues[x] = 128 + (128 - CustomVoltages[0][CustomPulseTimeIndex[x]]); 
                      } else {
-                       DACValues[x] = 128 - (CustomVoltage1[CustomStimTimestampIndex[x]] - 128);
+                       DACValues[x] = 128 - (CustomVoltages[0][CustomPulseTimeIndex[x]] - 128);
                      }
                    } else {
-                     if (CustomVoltage1[CustomStimTimestampIndex[x]] < 128) {
-                       DACValues[x] = 128 + (128 - CustomVoltage2[CustomStimTimestampIndex[x]]); 
+                     if (CustomVoltages[1][CustomPulseTimeIndex[x]] < 128) {
+                       DACValues[x] = 128 + (128 - CustomVoltages[1][CustomPulseTimeIndex[x]]); 
                      } else {
-                       DACValues[x] = 128 - (CustomVoltage2[CustomStimTimestampIndex[x]]-128);
+                       DACValues[x] = 128 - (CustomVoltages[1][CustomPulseTimeIndex[x]]-128);
                      } 
                    }
-                   if (CustomStimTarget[x] == 0) {
-                       CustomStimTimestampIndex[x] = CustomStimTimestampIndex[x] + 1;
+                   if (CustomTrainTarget[x] == 0) {
+                       CustomPulseTimeIndex[x] = CustomPulseTimeIndex[x] + 1;
                    }
                  }
                }
             } break;
             case 3: {
               if (SystemTime > NextPulseTransitionTime[x]) {
-                  if (FollowsCustomStimID[x] == 0) {
+                  if (CustomTrainID[x] == 0) {
                       NextPulseTransitionTime[x] = SystemTime + (InterPulseInterval[x] - (SystemTime - NextPulseTransitionTime[x]));
-                  } else if (FollowsCustomStimID[x] == 1) {  
-                    if (CustomStimTarget[x] == 0) {
-                      NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomTrain1[CustomStimTimestampIndex[x]];
-                      if (CustomStimTimestampIndex[x] >= (CustomStimNpulses[0])){
-                          CustomStimTimestampIndex[x] = 0;
-                          StimulusStatus[x] = 0;
-                          PulseStatus[x] = 0;
-                          DACValues[x] = 128;
-                          gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], LOW);
+                  } else if (CustomTrainID[x] == 1) {  
+                    if (CustomTrainTarget[x] == 0) {
+                      NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[0][CustomPulseTimeIndex[x]];
+                      if (CustomPulseTimeIndex[x] >= (CustomTrainNpulses[0])){
+                          killChannel(x);
                      }
                     } else {
                       NextPulseTransitionTime[x] = SystemTime + (InterPulseInterval[x] - (SystemTime - NextPulseTransitionTime[x]));
                     }  
                   } else {
-                    if (CustomStimTarget[x] == 0) {
-                        NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomTrain2[CustomStimTimestampIndex[x]];
-                        if (CustomStimTimestampIndex[x] >= (CustomStimNpulses[1])){
-                         CustomStimTimestampIndex[x] = 0;
-                          StimulusStatus[x] = 0;
-                          PulseStatus[x] = 0;
-                          DACValues[x] = 128;
-                          gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], LOW);
+                    if (CustomTrainTarget[x] == 0) {
+                        NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[1][CustomPulseTimeIndex[x]];
+                        if (CustomPulseTimeIndex[x] >= (CustomTrainNpulses[1])){
+                         killChannel(x);
                        }
                     } else {
                         NextPulseTransitionTime[x] = SystemTime + (InterPulseInterval[x] - (SystemTime - NextPulseTransitionTime[x]));
                     } 
                   }
-                 if (!((FollowsCustomStimID[x] == 0) && (InterPulseInterval[x] == 0))) { 
+                 if (!((CustomTrainID[x] == 0) && (InterPulseInterval[x] == 0))) { 
                    PulseStatus[x] = 0;
                    gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], LOW);
                    DACValues[x] = 128; 
@@ -829,34 +775,24 @@ void loop() {
        if (UsesBursts[x] == true) {
         if (SystemTime >= NextBurstTransitionTime[x]) {
           if (BurstStatus[x] == 1) {
-            if (FollowsCustomStimID[x] == 0) {
+            if (CustomTrainID[x] == 0) {
                      NextPulseTransitionTime[x] = SystemTime + (BurstInterval[x] - (SystemTime - NextBurstTransitionTime[x]));
                      NextBurstTransitionTime[x] = SystemTime + (BurstInterval[x] - (SystemTime - NextBurstTransitionTime[x]));
-              } else if ((FollowsCustomStimID[x] == 1) &&(CustomStimTarget[x] == 1)) {
-                     CustomStimTimestampIndex[x] = CustomStimTimestampIndex[x] + 1;
-                     if (CustomStimTimestampIndex[x] > (CustomStimNpulses[0])){
-                         CustomStimTimestampIndex[x] = 0;
-                         StimulusStatus[x] = 0;
-                         PulseStatus[x] = 0;
-                         BurstStatus[x] = 0;
-                         DACValues[x] = 128; 
-                         gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], LOW);
+              } else if ((CustomTrainID[x] == 1) &&(CustomTrainTarget[x] == 1)) {
+                     CustomPulseTimeIndex[x] = CustomPulseTimeIndex[x] + 1;
+                     if (CustomPulseTimeIndex[x] > (CustomTrainNpulses[0])){
+                         killChannel(x);
                      }
-                     NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomTrain1[CustomStimTimestampIndex[x]];
-                     NextBurstTransitionTime[x] = PulseTrainTimestamps[x] + CustomTrain1[CustomStimTimestampIndex[x]];
+                     NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[0][CustomPulseTimeIndex[x]];
+                     NextBurstTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[0][CustomPulseTimeIndex[x]];
                      
-              } else if  ((FollowsCustomStimID[x] == 2) &&(CustomStimTarget[x] == 1)) {
-                      CustomStimTimestampIndex[x] = CustomStimTimestampIndex[x] + 1;
-                      if (CustomStimTimestampIndex[x] > (CustomStimNpulses[1])){ 
-                     CustomStimTimestampIndex[x] = 0;
-                     StimulusStatus[x] = 0;
-                     PulseStatus[x] = 0;
-                     BurstStatus[x] = 0;
-                     DACValues[x] = 128; 
-                     gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], LOW);
-                     }
-                      NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomTrain2[CustomStimTimestampIndex[x]];
-                      NextBurstTransitionTime[x] = PulseTrainTimestamps[x] + CustomTrain2[CustomStimTimestampIndex[x]];
+              } else if  ((CustomTrainID[x] == 2) &&(CustomTrainTarget[x] == 1)) {
+                      CustomPulseTimeIndex[x] = CustomPulseTimeIndex[x] + 1;
+                      if (CustomPulseTimeIndex[x] > (CustomTrainNpulses[1])){ 
+                       killChannel(x);
+                      }
+                      NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[1][CustomPulseTimeIndex[x]];
+                      NextBurstTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[1][CustomPulseTimeIndex[x]];
                       
               }
               BurstStatus[x] = 0;
@@ -868,14 +804,14 @@ void loop() {
             //NextPulseTransitionTime[x] = SystemTime + Phase1Duration[x];
             NextPulseTransitionTime[x] = SystemTime + (Phase1Duration[x] - (SystemTime - NextPulseTransitionTime[x]));
             PulseStatus[x] = 1;
-            if ((FollowsCustomStimID[x] > 0) && (CustomStimTarget[x] == 1)) {
-              if (FollowsCustomStimID[x] == 1) {
-                 if (CustomStimTimestampIndex[x] < CustomStimNpulses[0]){
-                    DACValues[x] = CustomVoltage1[CustomStimTimestampIndex[x]];
+            if ((CustomTrainID[x] > 0) && (CustomTrainTarget[x] == 1)) {              
+              if (CustomTrainID[x] == 1) {
+                 if (CustomPulseTimeIndex[x] < CustomTrainNpulses[0]){
+                    DACValues[x] = CustomVoltages[0][CustomPulseTimeIndex[x]];
                  }
               } else {
-                if (CustomStimTimestampIndex[x] < CustomStimNpulses[1]){
-                    DACValues[x] = CustomVoltage1[CustomStimTimestampIndex[x]];
+                if (CustomPulseTimeIndex[x] < CustomTrainNpulses[1]){
+                    DACValues[x] = CustomVoltages[1][CustomPulseTimeIndex[x]];
                  }
               }
             } else {
@@ -887,19 +823,12 @@ void loop() {
        } 
         // Determine if Stimulus Status should go to 0 now
         if ((SystemTime > StimulusTrainEndTime[x]) && (StimulusStatus[x] == 1)) {
-          if (((FollowsCustomStimID[x] > 0) && (CustomStimLoop[x] == 1)) || (FollowsCustomStimID[x] == 0)) {
+          if (((CustomTrainID[x] > 0) && (CustomTrainLoop[x] == 1)) || (CustomTrainID[x] == 0)) {
           if (ContinuousLoopMode[x] == false) {
-              CustomStimTimestampIndex[x] = 0;
-              StimulusStatus[x] = 0;
-              PulseStatus[x] = 0;
-              DACValues[x] = 128; 
-              gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], LOW); 
+              killChannel(x);
             }
           }
         }
-       
-         
-      
     }
 
   }
@@ -928,17 +857,16 @@ byte* Long2Bytes(long LongInt2Break) {
 }
 
 
-//void dacWrite(byte DACVal[]) {
-//  for (int x = 0; x < 4; x++) {
-//      spi.write(x);
-//      spi.write(DACVal[x]);
-//      digitalWrite(DACLoadPin, LOW);
-//      digitalWrite(DACLoadPin, HIGH);
-//  }
-//
-//  digitalWrite(DACLatchPin,LOW);
-//  digitalWrite(DACLatchPin, HIGH);
-//}
+void killChannel(byte outputChannel) {
+  CustomPulseTimeIndex[outputChannel] = 0;
+  PreStimulusStatus[outputChannel] = 0;
+  StimulusStatus[outputChannel] = 0;
+  PulseStatus[outputChannel] = 0;
+  BurstStatus[outputChannel] = 0;
+  DACValues[outputChannel] = 128; 
+  gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[outputChannel], LOW);
+}
+
 void dacWrite(byte DACVal[]) {
       DACBuffer0[1] = DACVal[0];
       spi.write(DACBuffer0,2);
@@ -1011,18 +939,18 @@ void UpdateSettingsMenu(int inByte) {
           case 8: {InterPulseInterval[SelectedChannel-1] = ReturnUserValue(50, 4000000000, 100, 1);} break; // pulse interval
           case 9: {BurstDuration[SelectedChannel-1] = ReturnUserValue(50, 4000000000, 50, 1);} break; // burst width
           case 10: {BurstInterval[SelectedChannel-1] = ReturnUserValue(50, 4000000000, 50, 1);} break; // burst interval
-          case 11: {StimulusTrainDelay[SelectedChannel-1] = ReturnUserValue(50, 4000000000, 50, 1);} break; // stimulus train delay
-          case 12: {StimulusTrainDuration[SelectedChannel-1] = ReturnUserValue(50, 4000000000, 50, 1);} break; // stimulus train duration
+          case 11: {PulseTrainDelay[SelectedChannel-1] = ReturnUserValue(50, 4000000000, 50, 1);} break; // stimulus train delay
+          case 12: {PulseTrainDuration[SelectedChannel-1] = ReturnUserValue(50, 4000000000, 50, 1);} break; // stimulus train duration
           case 13: {byte Bit2Write = ReturnUserValue(0, 1, 1, 3);
                     byte Ch = SelectedChannel-1;
-                    bitWrite(TriggerAddress[0], Ch, Bit2Write);
+                    TriggerAddress[0][Ch] = Bit2Write;
                     } break; // Follow input 1 (on/off)
           case 14: {byte Bit2Write = ReturnUserValue(0, 1, 1, 3);
                     byte Ch = SelectedChannel-1;
-                    bitWrite(TriggerAddress[1], Ch, Bit2Write);
+                    TriggerAddress[1][Ch] = Bit2Write;
                     } break; // Follow input 2 (on/off)
-          case 15: {FollowsCustomStimID[SelectedChannel-1] = ReturnUserValue(0, 2, 1, 0);} break; // stimulus train duration
-          case 16: {CustomStimTarget[SelectedChannel-1] = ReturnUserValue(0,1,1,4);} break; // Custom stim target (Pulses / Bursts)
+          case 15: {CustomTrainID[SelectedChannel-1] = ReturnUserValue(0, 2, 1, 0);} break; // stimulus train duration
+          case 16: {CustomTrainTarget[SelectedChannel-1] = ReturnUserValue(0,1,1,4);} break; // Custom stim target (Pulses / Bursts)
           case 17: {
             // Exit to channel menu
           inMenu = 1; RefreshChannelMenu(SelectedChannel);
@@ -1091,7 +1019,7 @@ void UpdateSettingsMenu(int inByte) {
                PulseStatus[SelectedChannel-1] = 0;
                BurstStatus[SelectedChannel-1] = 0;
                StimulusStatus[SelectedChannel-1] = 0;
-               CustomStimTimestampIndex[SelectedChannel-1] = 0;
+               CustomPulseTimeIndex[SelectedChannel-1] = 0;
                DACValues[SelectedChannel-1] = 128;
                dacWrite(DACValues);
                gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[SelectedChannel-1], LOW);
@@ -1189,12 +1117,12 @@ void RefreshActionMenu(int ThisAction) {
           case 8: {write2Screen("<Pulse Interval>",FormatNumberForDisplay(InterPulseInterval[SelectedChannel-1], 1));} break;
           case 9: {write2Screen("<Burst Duration>",FormatNumberForDisplay(BurstDuration[SelectedChannel-1], 1));} break;
           case 10: {write2Screen("<Burst Interval>",FormatNumberForDisplay(BurstInterval[SelectedChannel-1], 1));} break;
-          case 11: {write2Screen("< Train Delay  >",FormatNumberForDisplay(StimulusTrainDelay[SelectedChannel-1], 1));} break;
-          case 12: {write2Screen("<Train Duration>",FormatNumberForDisplay(StimulusTrainDuration[SelectedChannel-1], 1));} break;
-          case 13: {write2Screen("<Link Trigger 1>",FormatNumberForDisplay(bitRead(TriggerAddress[0], SelectedChannel-1), 3));} break;
-          case 14: {write2Screen("<Link Trigger 2>",FormatNumberForDisplay(bitRead(TriggerAddress[1], SelectedChannel-1), 3));} break; 
-          case 15: {write2Screen("<Custom Train# >",FormatNumberForDisplay(FollowsCustomStimID[SelectedChannel-1], 0));} break;
-          case 16: {write2Screen("<Custom Target >",FormatNumberForDisplay(CustomStimTarget[SelectedChannel-1], 4));} break;
+          case 11: {write2Screen("< Train Delay  >",FormatNumberForDisplay(PulseTrainDelay[SelectedChannel-1], 1));} break;
+          case 12: {write2Screen("<Train Duration>",FormatNumberForDisplay(PulseTrainDuration[SelectedChannel-1], 1));} break;
+          case 13: {write2Screen("<Link Trigger 1>",FormatNumberForDisplay(TriggerAddress[0][SelectedChannel-1], 3));} break;
+          case 14: {write2Screen("<Link Trigger 2>",FormatNumberForDisplay(TriggerAddress[1][SelectedChannel-1], 3));} break; 
+          case 15: {write2Screen("<Custom Train# >",FormatNumberForDisplay(CustomTrainID[SelectedChannel-1], 0));} break;
+          case 16: {write2Screen("<Custom Target >",FormatNumberForDisplay(CustomTrainTarget[SelectedChannel-1], 4));} break;
           case 17: {write2Screen("<     Exit     >"," ");} break;
      }
 }
@@ -1303,12 +1231,12 @@ unsigned int ReturnUserValue(unsigned int LowerLimit, unsigned int UpperLimit, u
        case 8:{UserValue = InterPulseInterval[SelectedChannel-1];} break;
        case 9:{UserValue = BurstDuration[SelectedChannel-1];} break;
        case 10:{UserValue = BurstInterval[SelectedChannel-1];} break;
-       case 11:{UserValue = StimulusTrainDelay[SelectedChannel-1];} break;
-       case 12:{UserValue = StimulusTrainDuration[SelectedChannel-1];} break;
-       case 13:{UserValue = bitRead(TriggerAddress[0], SelectedChannel-1);} break;
-       case 14:{UserValue = bitRead(TriggerAddress[1], SelectedChannel-1);} break;
-       case 15:{UserValue = FollowsCustomStimID[SelectedChannel-1];} break;
-       case 16:{UserValue = CustomStimTarget[SelectedChannel-1];} break;       
+       case 11:{UserValue = PulseTrainDelay[SelectedChannel-1];} break;
+       case 12:{UserValue = PulseTrainDuration[SelectedChannel-1];} break;
+       case 13:{UserValue = TriggerAddress[0][SelectedChannel-1];} break;
+       case 14:{UserValue = TriggerAddress[1][SelectedChannel-1];} break;
+       case 15:{UserValue = CustomTrainID[SelectedChannel-1];} break;
+       case 16:{UserValue = CustomTrainTarget[SelectedChannel-1];} break;       
      }
      inMenu = 3; // Temporarily goes a menu layer deeper so leading zeros are displayed by FormatNumberForDisplay
      lcd.setCursor(0, 1); lcd.print("                ");
@@ -1555,9 +1483,9 @@ void PrepareOutputChannelMemoryPage1(byte ChannelNum) {
   PageBytes[16] = BrokenBytes[0]; PageBytes[17] = BrokenBytes[1]; PageBytes[18] = BrokenBytes[2]; PageBytes[19] = BrokenBytes[3]; 
   breakLong(BurstInterval[ChannelNum]);
   PageBytes[20] = BrokenBytes[0]; PageBytes[21] = BrokenBytes[1]; PageBytes[22] = BrokenBytes[2]; PageBytes[23] = BrokenBytes[3]; 
-  breakLong(StimulusTrainDuration[ChannelNum]);
+  breakLong(PulseTrainDuration[ChannelNum]);
   PageBytes[24] = BrokenBytes[0]; PageBytes[25] = BrokenBytes[1]; PageBytes[26] = BrokenBytes[2]; PageBytes[27] = BrokenBytes[3]; 
-  breakLong(StimulusTrainDelay[ChannelNum]);
+  breakLong(PulseTrainDelay[ChannelNum]);
   PageBytes[28] = BrokenBytes[0]; PageBytes[29] = BrokenBytes[1]; PageBytes[30] = BrokenBytes[2]; PageBytes[31] = BrokenBytes[3]; 
 }
 
@@ -1569,17 +1497,17 @@ void PrepareOutputChannelMemoryPage2(byte ChannelNum) {
   // PageBytes[2] reserved for >8-bit DAC upgrade 
   PageBytes[3] = Phase2Voltage[ChannelNum];
   // PageBytes[3] reserved for >8-bit DAC upgrade
-  PageBytes[4] = FollowsCustomStimID[ChannelNum];
-  PageBytes[5] = CustomStimTarget[ChannelNum];
-  PageBytes[6] = TriggerAddress[0]; // To be used in future...
-  PageBytes[7] = TriggerAddress[1];
-  PageBytes[8] = CustomStimLoop[ChannelNum];
-  PageBytes[9] = 0;
-  PageBytes[10] = 0;
-  PageBytes[11] = 0;
-  PageBytes[12] = 0;
-  PageBytes[13] = 0;
-  PageBytes[14] = 0;
+  PageBytes[4] = CustomTrainID[ChannelNum];
+  PageBytes[5] = CustomTrainTarget[ChannelNum];
+  PageBytes[6] = TriggerAddress[0][0]; // To be used in future...
+  PageBytes[7] = TriggerAddress[0][1];
+  PageBytes[8] = TriggerAddress[0][2];
+  PageBytes[9] = TriggerAddress[0][3];
+  PageBytes[10] = TriggerAddress[1][0];
+  PageBytes[11] = TriggerAddress[1][1];
+  PageBytes[12] = TriggerAddress[1][2];
+  PageBytes[13] = TriggerAddress[1][3];
+  PageBytes[14] = CustomTrainLoop[ChannelNum];
   PageBytes[15] = 0;
   PageBytes[16] = 0;
   PageBytes[17] = 0;
@@ -1623,8 +1551,8 @@ void RestoreParametersFromEEPROM() {
     InterPulseInterval[Chan] = makeLong(PageBytes[15], PageBytes[14], PageBytes[13], PageBytes[12]);
     BurstDuration[Chan] = makeLong(PageBytes[19], PageBytes[18], PageBytes[17], PageBytes[16]);
     BurstInterval[Chan] = makeLong(PageBytes[23], PageBytes[22], PageBytes[21], PageBytes[20]);
-    StimulusTrainDuration[Chan] = makeLong(PageBytes[27], PageBytes[26], PageBytes[25], PageBytes[24]);
-    StimulusTrainDelay[Chan] = makeLong(PageBytes[31], PageBytes[30], PageBytes[29], PageBytes[28]);
+    PulseTrainDuration[Chan] = makeLong(PageBytes[27], PageBytes[26], PageBytes[25], PageBytes[24]);
+    PulseTrainDelay[Chan] = makeLong(PageBytes[31], PageBytes[30], PageBytes[29], PageBytes[28]);
     PB = 0;
     for (int i = (32+ChannelMemoryOffset); i < (64+ChannelMemoryOffset); i++) {
       PageBytes[PB] = ReadEEPROM(i);
@@ -1634,11 +1562,17 @@ void RestoreParametersFromEEPROM() {
     IsBiphasic[Chan] = PageBytes[0];
     Phase1Voltage[Chan] = PageBytes[1];
     Phase2Voltage[Chan] = PageBytes[3];
-    FollowsCustomStimID[Chan] = PageBytes[4];
-    CustomStimTarget[Chan] = PageBytes[5];
-    TriggerAddress[0] = PageBytes[6]; // This is stored on every channel and over-written 4 times for convenience 
-    TriggerAddress[1] = PageBytes[7];
-    CustomStimLoop[Chan] = PageBytes[8];
+    CustomTrainID[Chan] = PageBytes[4];
+    CustomTrainTarget[Chan] = PageBytes[5];
+    TriggerAddress[0][0] = PageBytes[6]; // This is stored on every channel and over-written 4 times for programming convenience 
+    TriggerAddress[0][1] = PageBytes[7];
+    TriggerAddress[0][2] = PageBytes[8];
+    TriggerAddress[0][3] = PageBytes[9];
+    TriggerAddress[1][0] = PageBytes[10];
+    TriggerAddress[1][1] = PageBytes[11];
+    TriggerAddress[1][2] = PageBytes[12];
+    TriggerAddress[1][3] = PageBytes[13];
+    CustomTrainLoop[Chan] = PageBytes[14];
   }
 }
 
@@ -1650,14 +1584,14 @@ void StoreCustomStimuli() {
   int CustomStimPosition = 0;
   for (int i = 0; i < 31; i++) {
     for (int x = 0; x < 32; x++) {
-      PageBytes[x] = CustomVoltage1[CustomStimPosition];
+      PageBytes[x] = CustomVoltages[0][CustomStimPosition];
       WritePosition++; CustomStimPosition++;
     }
     WriteEEPROMPage(PageBytes, 32, WritePagePosition);
     WritePagePosition = WritePagePosition + 32;
   }
   for (int x = 0; x < 8; x++) {
-    PageBytes[x] = CustomVoltage1[CustomStimPosition];
+    PageBytes[x] = CustomVoltages[0][CustomStimPosition];
     WritePosition++; CustomStimPosition++;
   }
   for (int x = 8; x < 32; x++) {
@@ -1671,14 +1605,14 @@ void StoreCustomStimuli() {
   CustomStimPosition = 0;
   for (int i = 0; i < 31; i++) {
     for (int x = 0; x < 32; x++) {
-      PageBytes[x] = CustomVoltage2[CustomStimPosition];
+      PageBytes[x] = CustomVoltages[1][CustomStimPosition];
       WritePosition++; CustomStimPosition++;
     }
     WriteEEPROMPage(PageBytes, 32, WritePagePosition);
     WritePagePosition = WritePagePosition + 32;
   }
   for (int x = 0; x < 8; x++) {
-    PageBytes[x] = CustomVoltage2[CustomStimPosition];
+    PageBytes[x] = CustomVoltages[1][CustomStimPosition];
     WritePosition++; CustomStimPosition++;
   }
   for (int x = 8; x < 32; x++) {
@@ -1693,7 +1627,7 @@ void StoreCustomStimuli() {
 //  for (int i = 0; i < 125; i++) {
 //    inPagePosition = 0;
 //    for (int x = 0; x < 8; x++) { 
-//      breakLong(CustomTrain1[CustomStimPosition]);
+//      breakLong(CustomPulseTimes[0][CustomStimPosition]);
 //      for (int y = 0; y < 4; y++) {
 //        PageBytes[inPagePosition] = BrokenBytes[y];
 //        inPagePosition++;
@@ -1711,7 +1645,7 @@ void StoreCustomStimuli() {
 //  for (int i = 0; i < 125; i++) {
 //    inPagePosition = 0;
 //    for (int x = 0; x < 8; x++) { 
-//      breakLong(CustomTrain2[CustomStimPosition]);
+//      breakLong(CustomPulseTimes[1][CustomStimPosition]);
 //      for (int y = 0; y < 4; y++) {
 //        PageBytes[inPagePosition] = BrokenBytes[y];
 //        inPagePosition++;
@@ -1730,14 +1664,14 @@ void RestoreCustomStimuli() {
   int ChennelMemoryEnd = ChannelMemoryOffset+1000;
   byte  PB = 0;
     for (int i = ChannelMemoryOffset; i < (ChennelMemoryEnd); i++) {
-      CustomVoltage1[PB] = ReadEEPROM(i);
+      CustomVoltages[0][PB] = ReadEEPROM(i);
       PB++;
     }
   ChannelMemoryOffset = 2048;
   ChennelMemoryEnd = ChannelMemoryOffset+1000;
   PB = 0;
     for (int i = ChannelMemoryOffset; i < (ChennelMemoryEnd); i++) {
-      CustomVoltage2[PB] = ReadEEPROM(i);
+      CustomVoltages[1][PB] = ReadEEPROM(i);
       PB++;
     }
   ChannelMemoryOffset = 3072;
@@ -1746,7 +1680,7 @@ void RestoreCustomStimuli() {
       BrokenBytes[1] = ReadEEPROM(ChannelMemoryOffset); ChannelMemoryOffset++;
       BrokenBytes[2] = ReadEEPROM(ChannelMemoryOffset); ChannelMemoryOffset++;
       BrokenBytes[3] = ReadEEPROM(ChannelMemoryOffset); ChannelMemoryOffset++;
-      CustomTrain1[i] = makeLong(BrokenBytes[3], BrokenBytes[2], BrokenBytes[1], BrokenBytes[0]);
+      CustomPulseTimes[0][i] = makeLong(BrokenBytes[3], BrokenBytes[2], BrokenBytes[1], BrokenBytes[0]);
   }
   ChannelMemoryOffset = 7200;
   for (int i = 0; i < 1000; i++) {
@@ -1754,7 +1688,7 @@ void RestoreCustomStimuli() {
       BrokenBytes[1] = ReadEEPROM(ChannelMemoryOffset); ChannelMemoryOffset++;
       BrokenBytes[2] = ReadEEPROM(ChannelMemoryOffset); ChannelMemoryOffset++;
       BrokenBytes[3] = ReadEEPROM(ChannelMemoryOffset); ChannelMemoryOffset++;
-      CustomTrain2[i] = makeLong(BrokenBytes[3], BrokenBytes[2], BrokenBytes[1], BrokenBytes[0]);
+      CustomPulseTimes[1][i] = makeLong(BrokenBytes[3], BrokenBytes[2], BrokenBytes[1], BrokenBytes[0]);
   }
 }
 

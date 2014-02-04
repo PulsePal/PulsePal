@@ -826,27 +826,28 @@ function pushbutton5_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton5 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-global PulsePalSystem;
-ScreenDimensions = get( 0, 'ScreenSize' ); Width = ScreenDimensions(3); Length = ScreenDimensions(4);
-HelpImageData = imread(fullfile(PulsePalSystem.PulsePalPath, 'Media', 'OutputParameterExamples.bmp'));
-if ispc
-    if exist([PulsePalSystem.PulsePalPath(1:3) 'Program Files\Windows Photo Viewer\PhotoViewer.dll']) == 2
-        % Viewer for Win7
-        SystemCommand = ['rundll32 "' PulsePalSystem.PulsePalPath(1:3) 'Program Files\Windows Photo Viewer\PhotoViewer.dll", ImageView_Fullscreen ' fullfile(PulsePalSystem.PulsePalPath, 'Media', 'OutputParameterExamples.bmp')];
-    else
-        % Handle other viewers
-    end
-    try
-        system(SystemCommand);
-    catch
-        image(HelpImageData); axis off;
-    end
+
+% define the URL for US Naval Observatory Time page (to check for Internet
+% connectivity)
+url =java.net.URL('http://tycho.usno.navy.mil/cgi-bin/timer.pl');
+
+% read the URL
+try
+link = openStream(url);
+parse = java.io.InputStreamReader(link);
+snip = java.io.BufferedReader(parse);
+if ~isempty(snip)
+    web('https://sites.google.com/site/pulsepalwiki/parameter-guide');
 else
-PulsePalSystem.GUIHandles.OutputHelpFig = figure('name','Help','numbertitle','off', 'MenuBar', 'none');
-ha = axes('units','normalized', 'position',[0 0 1 1]);
-uistack(ha,'bottom');
-image(HelpImageData); axis off;
+    msgbox('Error: Internet connectivity is required for help documentation. See command window for url.')
+    disp('An illustrated parameter guide is available at: https://sites.google.com/site/pulsepalwiki/parameter-guide')
 end
+catch
+    msgbox('Error: Internet connectivity is required for help documentation. See command window for url.')
+    disp('An illustrated parameter guide is available at: https://sites.google.com/site/pulsepalwiki/parameter-guide')
+end
+
+    
 
 
 % --- Executes on button press in checkbox7.
@@ -923,8 +924,8 @@ Matrix = handles.Matrix;
             if ~IsTimeSequence(CandidateTimes) && ValidStim == 1
                 ValidStim = 0; PulsePalErrorMsg('Error: Custom timestamps must always increase');
             end
-            if (sum(rem(CandidateTimes,100)) > 0)  && ValidStim == 1
-                ValidStim = 0; PulsePalErrorMsg('Error: Custom timestamps must be multiples of 0.0001 seconds');
+            if (sum(rem(CandidateTimes,50)) > 0)  && ValidStim == 1
+                ValidStim = 0; PulsePalErrorMsg('Error: Custom timestamps must be multiples of 0.00005 seconds');
             end
             if (CandidateTimes(length(CandidateTimes)) > 3600000000)  && ValidStim == 1
                 ValidStim = 0; PulsePalErrorMsg('Error: Custom timestamps must be < 3600 s');
@@ -960,8 +961,8 @@ Matrix = handles.Matrix;
             if ~IsTimeSequence(CandidateTimes)  && ValidStim == 1
                 ValidStim = 0; PulsePalErrorMsg('Error: Custom timestamps must always increase');
             end
-            if (sum(rem(CandidateTimes,100)) > 0)  && ValidStim == 1
-                ValidStim = 0; PulsePalErrorMsg('Error: Custom timestamps must be multiples of 0.0001 seconds');
+            if (sum(rem(CandidateTimes,50)) > 0)  && ValidStim == 1
+                ValidStim = 0; PulsePalErrorMsg('Error: Custom timestamps must be multiples of 0.00005 seconds');
             end
             if (CandidateTimes(length(CandidateTimes)) > 3600000000) && ValidStim == 1
                 ValidStim = 0; PulsePalErrorMsg('Error: Custom timestamps must be < 3600 s');
@@ -995,10 +996,10 @@ function uipushtool3_ClickedCallback(hObject, eventdata, handles)
 % hObject    handle to uipushtool3 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-PulsePalMatrix = handles.Matrix;
+ParameterMatrix = handles.Matrix;
 [file,path] = uiputfile('PulsePalProgram.mat','Save program');
 Savepath = fullfile(path, file);
-save(Savepath, 'PulsePalMatrix');
+save(Savepath, 'ParameterMatrix');
 
 
 % --------------------------------------------------------------------

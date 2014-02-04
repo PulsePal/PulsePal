@@ -4,11 +4,9 @@ function ConfirmBit = ProgramPulsePal(ProgramMatrix)
 global PulsePalSystem;
    OriginalProgMatrix = ProgramMatrix;
     
-    % Convert Triggering address to bytes for each input channel (i.e.
-    % input channel 1 triggers output channel 2 = 0010 = 2)
-    TrigAddresses = cell2mat(ProgramMatrix(13:14,2:5));
-    Chan1TrigAddressByte = uint8(bin2dec(num2str(TrigAddresses(1,:))));
-    Chan2TrigAddressByte = uint8(bin2dec(num2str(TrigAddresses(2,:))));
+    % Extract trigger address bytes
+    Chan1TrigAddressBytes = uint8(cell2mat(ProgramMatrix(13,2:5)));
+    Chan2TrigAddressBytes = uint8(cell2mat(ProgramMatrix(14,2:5)));
     
     % Extract custom override byte (0 if parameterized, 1 if this channel uses custom
     % stimulus train 1, 2 if this channel uses custom stimulus train 2)
@@ -82,14 +80,14 @@ global PulsePalSystem;
     TimeData = uint32(cell2mat(ProgramMatrix(5:12, 2:5))*1000000);
     
     % Ensure time data is within range
-    if sum(sum(rem(TimeData, 100))) > 0
-        errordlg('Non-zero time values for Pulse Pal rev0.4 must be multiples of 100 microseconds. Please check your program matrix.', 'Invalid program');
+    if sum(sum(rem(TimeData, 50))) > 0
+        errordlg('Non-zero time values for Pulse Pal rev0.4 must be multiples of 0.00005 seconds. Please check your program matrix.', 'Invalid program');
     end
     
     % Arrange program into a single byte-string
     FormattedProgramTimestamps = TimeData(1:end); 
     SingleByteOutputParams = [IsBiphasic; Phase1Voltages; Phase2Voltages; FollowsCustomStimID; CustomStimTarget; CustomStimLoop];
-    FormattedParams = [SingleByteOutputParams(1:end) Chan1TrigAddressByte Chan2TrigAddressByte InputChanMode];
+    FormattedParams = [SingleByteOutputParams(1:end) Chan1TrigAddressBytes Chan2TrigAddressBytes InputChanMode];
     
     % Send program
     fwrite(PulsePalSystem.SerialPort, 73, 'uint8'); % Instruct PulsePal to recieve a new program with byte 73

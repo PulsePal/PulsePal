@@ -48,7 +48,7 @@ end
 
 % Import virtual serial port object into this workspace from base
 global PulsePalSystem;
-
+OriginalValue = ParamValue;
 % Determine whether data is time data
 if (ParamCode < 12) && (ParamCode > 3)
     isTimeData = 1;
@@ -79,5 +79,8 @@ else
     fwrite(PulsePalSystem.SerialPort, ParamValue, 'uint8');
 end
 ConfirmBit = fread(PulsePalSystem.SerialPort, 1);
+if ConfirmBit == 1
+    PulsePalSystem.CurrentProgram{ParamCode+1,Channel+1} = OriginalValue;
+end
 
 
