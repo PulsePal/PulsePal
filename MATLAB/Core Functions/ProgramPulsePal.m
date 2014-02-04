@@ -80,8 +80,8 @@ global PulsePalSystem;
     TimeData = uint32(cell2mat(ProgramMatrix(5:12, 2:5))*1000000);
     
     % Ensure time data is within range
-    if sum(sum(rem(TimeData, 50))) > 0
-        errordlg('Non-zero time values for Pulse Pal rev0.4 must be multiples of 0.00005 seconds. Please check your program matrix.', 'Invalid program');
+    if sum(sum(rem(TimeData, PulsePalSystem.CycleDuration))) > 0
+        errordlg(['Non-zero time values for Pulse Pal rev0.4 must be multiples of ' num2str(PulsePalSystem.CycleDuration) ' microseconds. Please check your program matrix.'], 'Invalid program');
     end
     
     % Arrange program into a single byte-string

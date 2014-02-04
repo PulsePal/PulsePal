@@ -309,10 +309,10 @@ void PulsePal::setContinuousLoop(uint8_t channel, uint8_t state) // JS 1/30/2014
 void PulsePal::constrain(uint32_t* value, uint32_t min, uint32_t max)
 {
 
-    // value must be a multiple of 50
-    if (*value % 50 > 0)
+    // value must be a multiple of 100
+    if (*value % 100 > 0)
     {
-        *value = *value - (*value % 50);
+        *value = *value - (*value % 100);
     }
 
     if (*value < min)

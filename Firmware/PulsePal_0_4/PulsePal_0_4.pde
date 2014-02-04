@@ -50,6 +50,8 @@ byte DACLatchPin=5;
 byte USBPacketCorrectionByte = 0; // If messages sent over USB in Windows XP are 64 bytes, the system crashes - so this variable keeps track of whether to chop off a junk byte at the end of the message. Used for custom stimuli.
 HardwareSPI spi(1);
 HardwareSPI EEPROM(2);
+byte CycleDuration = 100;
+byte HalfCycle = CycleDuration/2;
 
 // Variables related to EEPROM
 byte PageBytes[32] = {0}; // Stores page to be written
@@ -207,7 +209,7 @@ void loop() {
    } else {
      WasStimulating = 1;
        // Make sure loop runs once every 50us
-      while ((SystemTime-LastLoopTime) < 50) {
+      while ((SystemTime-LastLoopTime) < CycleDuration) {
          SystemTime = micros();
        }
       LastLoopTime = SystemTime;
@@ -584,7 +586,7 @@ void loop() {
             NextBurstTransitionTime[x] = SystemTime+BurstDuration[x];
           }
           if (CustomTrainID[x] == 0) {
-            NextPulseTransitionTime[x] = SystemTime-25; // -25 ensures that despite 4us jitter, the next multiple of 50us timestamp will be read properly.
+            NextPulseTransitionTime[x] = SystemTime-HalfCycle; // -HalfCycle ensures that despite 4us jitter, the next multiple of 50us timestamp will be read properly.
             DACValues[x] = Phase1Voltage[x];
           } else {
             NextPulseTransitionTime[x] = SystemTime + CustomPulseTimes[thisTrainIDIndex][0]; 
@@ -618,11 +620,11 @@ void loop() {
                      int SkipNextInterval = 0;
                      if ((CustomTrainLoop[x] == 1) && (CustomPulseTimeIndex[x] == CustomTrainNpulses[thisTrainIDIndex])) {
                             CustomPulseTimeIndex[x] = 0;
-                            PulseTrainTimestamps[x] = SystemTime-25; // ensures that despite 4us jitter, the next multiple of 50us timestamp will be read properly. 
+                            PulseTrainTimestamps[x] = SystemTime-HalfCycle; // ensures that despite 4us jitter, the next multiple of 50us timestamp will be read properly. 
                      }
                      if (CustomPulseTimeIndex[x] < CustomTrainNpulses[thisTrainIDIndex]) {
                        if ((CustomPulseTimes[thisTrainIDIndex][CustomPulseTimeIndex[x]+1] - CustomPulseTimes[thisTrainIDIndex][CustomPulseTimeIndex[x]]) > Phase1Duration[x]) {
-                         NextPulseTransitionTime[x] = SystemTime - 25 + (Phase1Duration[x] - (SystemTime - NextPulseTransitionTime[x]));
+                         NextPulseTransitionTime[x] = SystemTime - HalfCycle + (Phase1Duration[x] - (SystemTime - NextPulseTransitionTime[x]));
                        } else {
                          NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[thisTrainIDIndex][CustomPulseTimeIndex[x]+1];  
                          SkipNextInterval = 1;
@@ -649,6 +651,7 @@ void loop() {
             case 1: { // if this is the first phase of the pulse
              // determine if this phase should end now
              if (SystemTime > NextPulseTransitionTime[x]) {
+               int TransitionTimeError = SystemTime - NextPulseTransitionTime[x];
                 if (IsBiphasic[x] == 0) {
                   if (CustomTrainID[x] == 0) {
                       NextPulseTransitionTime[x] = SystemTime + (InterPulseInterval[x] - (SystemTime - NextPulseTransitionTime[x]));
@@ -659,18 +662,19 @@ void loop() {
                     if (CustomTrainTarget[x] == 0) {
                       NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[thisTrainIDIndex][CustomPulseTimeIndex[x]];
                     } else {
-                      NextPulseTransitionTime[x] = SystemTime + (InterPulseInterval[x] - (SystemTime - NextPulseTransitionTime[x]));
+                      NextPulseTransitionTime[x] = SystemTime + (InterPulseInterval[x] - TransitionTimeError);
                     }
                     if ((CustomTrainLoop[x] == 1) && (CustomPulseTimeIndex[x] == CustomTrainNpulses[thisTrainIDIndex])) {
                             CustomPulseTimeIndex[x] = 0;
-                            PulseTrainTimestamps[x] = SystemTime - 25; // ensures that despite 4us jitter, the next multiple of 50us timestamp will be read properly. 
+                            PulseTrainTimestamps[x] = SystemTime - HalfCycle - TransitionTimeError; // ensures that despite 4us jitter, the next multiple of 50us timestamp will be read properly. 
                             DACValues[x] = CustomVoltages[thisTrainIDIndex][CustomPulseTimeIndex[x]];
                             if ((CustomPulseTimes[thisTrainIDIndex][CustomPulseTimeIndex[x]+1] - CustomPulseTimes[thisTrainIDIndex][CustomPulseTimeIndex[x]]) > Phase1Duration[x]) {
                               PulseStatus[x] = 1;
                             } else {
                               PulseStatus[x] = 0;
                             }
-                            NextPulseTransitionTime[x] = SystemTime + (Phase1Duration[x] - (SystemTime - NextPulseTransitionTime[x]));
+                            //NextPulseTransitionTime[x] = SystemTime + (Phase1Duration[x] - (SystemTime - NextPulseTransitionTime[x]));
+                            NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + Phase1Duration[x];
                             CustomPulseTimeIndex[x] = CustomPulseTimeIndex[x] + 1;
                     } else {
                       PulseStatus[x] = 0;
@@ -681,7 +685,7 @@ void loop() {
      
                 } else {
                   if (InterPhaseInterval[x] == 0) {
-                    NextPulseTransitionTime[x] = SystemTime + (Phase2Duration[x] - (SystemTime - NextPulseTransitionTime[x]));
+                    NextPulseTransitionTime[x] = SystemTime + (Phase2Duration[x] - TransitionTimeError);
                     PulseStatus[x] = 3;
                     if (CustomTrainID[x] == 0) {
                       DACValues[x] = Phase2Voltage[x]; 
@@ -697,7 +701,7 @@ void loop() {
                    }
                     } 
                   } else {
-                    NextPulseTransitionTime[x] = SystemTime + (InterPhaseInterval[x] - (SystemTime - NextPulseTransitionTime[x]));
+                    NextPulseTransitionTime[x] = SystemTime + (InterPhaseInterval[x] - TransitionTimeError);
                     PulseStatus[x] = 2;
                     DACValues[x] = 128; 
                   }

@@ -4,6 +4,7 @@ classdef PulsePalObject < handle
         GUIHandles
         Graphics
         FirmwareVersion
+        CycleDuration
         CurrentProgram
         PulsePalPath
         SerialPort

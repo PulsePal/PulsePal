@@ -93,6 +93,10 @@ end
 HandShakeOkByte = fread(PulsePalSystem.SerialPort, 1);
 if HandShakeOkByte == 75
     PulsePalSystem.FirmwareVersion = fread(PulsePalSystem.SerialPort, 1, 'uint32');
+    switch PulsePalSystem.FirmwareVersion
+        case 4
+            PulsePalSystem.CycleDuration = 100; % Loops every 100us
+    end
 else
     disp('Error: Pulse Pal returned an incorrect handshake signature.')
 end

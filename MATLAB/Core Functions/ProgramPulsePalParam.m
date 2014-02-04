@@ -64,8 +64,8 @@ end
 % Sanity-check time data
 if isTimeData
     ParamValue = ParamValue*1000000;
-    if rem(ParamValue, 100) > 0
-        errordlg('Non-zero time values for Pulse Pal rev0.4 must be multiples of 100 microseconds.', 'Error');
+    if rem(ParamValue, PulsePalSystem.CycleDuration) > 0
+        errordlg(['Non-zero time values for Pulse Pal rev0.4 must be multiples of ' num2str(PulsePalSystem.CycleDuration) ' microseconds.'], 'Error');
     end
 end
 
