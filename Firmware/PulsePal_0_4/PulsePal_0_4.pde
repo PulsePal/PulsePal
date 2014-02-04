@@ -107,7 +107,6 @@ unsigned long StimulusTrainEndTime[4] = {0}; // Stores time the stimulus train i
 unsigned long CustomPulseTimes[2][1001] = {0};
 byte CustomVoltages[2][1001] = {0};
 unsigned long LastLoopTime = 0;
-byte FirstLoop = 1; // This determines whether this is the first loop execution of the stimulus train.
 int PulseStatus[4] = {0}; // This is 0 if not delivering a pulse, 1 if delivering.
 boolean BurstStatus[4] = {0}; // This is "true" during bursts and false during inter-burst intervals.
 boolean StimulusStatus[4] = {0}; // This is "true" for a channel when the stimulus train is actively being delivered
@@ -371,7 +370,6 @@ void loop() {
                  BurstStatus[x] = 1; 
             }
           PrePulseTrainTimestamps[x] = SystemTime;
-          FirstLoop = 1;
           }
         }
       } break;
@@ -555,10 +553,10 @@ void loop() {
       } else {
        // Adjust StimulusStatus to reflect any new trigger events
        if (TriggerAddress[0][x] && (LineTriggerEvent[0] == 1)) {
-         PreStimulusStatus[x] = 1; BurstStatus[x] = 1; PrePulseTrainTimestamps[x] = SystemTime; NextBurstTransitionTime[x] = (SystemTime + PulseTrainDelay[x] + 1000); FirstLoop = 1; PulseStatus[x] = 0; 
+         PreStimulusStatus[x] = 1; BurstStatus[x] = 1; PrePulseTrainTimestamps[x] = SystemTime; NextBurstTransitionTime[x] = (SystemTime + PulseTrainDelay[x] + 1000); PulseStatus[x] = 0; 
        }
        if (TriggerAddress[1][x] && (LineTriggerEvent[1] == 1)) {
-         PreStimulusStatus[x] = 1; BurstStatus[x] = 1; PrePulseTrainTimestamps[x] = SystemTime; NextBurstTransitionTime[x] = (SystemTime + PulseTrainDelay[x] + 1000); FirstLoop = 1; PulseStatus[x] = 0;
+         PreStimulusStatus[x] = 1; BurstStatus[x] = 1; PrePulseTrainTimestamps[x] = SystemTime; NextBurstTransitionTime[x] = (SystemTime + PulseTrainDelay[x] + 1000); PulseStatus[x] = 0;
        }
       }
     }
@@ -566,6 +564,8 @@ void loop() {
      Stimulating = 0; // null condition, will be overridden in loop if any channels are still stimulating.
     // Check clock and adjust line levels for new time as per programming
     for (int x = 0; x < 4; x++) {
+      byte thisTrainID = CustomTrainID[x];
+      byte thisTrainIDIndex = thisTrainID-1;
       if (PreStimulusStatus[x] == 1) {
         if (SystemTime >= (PrePulseTrainTimestamps[x] + PulseTrainDelay[x])) {
           PreStimulusStatus[x] = 0;
@@ -581,22 +581,18 @@ void loop() {
             }
             BurstStatus[x] = 0;
           } else {
-          NextBurstTransitionTime[x] = SystemTime+BurstDuration[x];
+            NextBurstTransitionTime[x] = SystemTime+BurstDuration[x];
           }
           if (CustomTrainID[x] == 0) {
             NextPulseTransitionTime[x] = SystemTime-25; // -25 ensures that despite 4us jitter, the next multiple of 50us timestamp will be read properly.
             DACValues[x] = Phase1Voltage[x];
-          } else if (CustomTrainID[x] == 1) {
-            NextPulseTransitionTime[x] = SystemTime + CustomPulseTimes[0][0] -25; 
           } else {
-            NextPulseTransitionTime[x] = SystemTime + CustomPulseTimes[1][0] -25;
+            NextPulseTransitionTime[x] = SystemTime + CustomPulseTimes[thisTrainIDIndex][0]; 
           }
         }
       }
       if (StimulusStatus[x] == 1) { // if this output line has been triggered and is delivering a stimulus
       Stimulating = 1;
-      int thisTrainID = CustomTrainID[x];
-      int thisTrainIDIndex = thisTrainID-1;
         if (BurstStatus[x] == 1) { // if this output line is currently gated "on"
           switch (PulseStatus[x]) { // depending on the phase of the pulse
           
