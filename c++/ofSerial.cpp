@@ -1,5 +1,5 @@
 //
-// code taken from openFrameworks (http://www.openframeworks.cc)
+// code adopted from openFrameworks (http://www.openframeworks.cc)
 //
 
 #include "ofSerial.h"

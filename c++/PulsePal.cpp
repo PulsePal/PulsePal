@@ -1,8 +1,9 @@
 /*
     ------------------------------------------------------------------
 
-    This file is part of the Open Ephys GUI
-    Copyright (C) 2013 Open Ephys
+    This file is part of the Pulse Pal project
+    Copyright (C) 2014 Joshua Sanders
+	https://sites.google.com/site/pulsepalwiki/home
 
     ------------------------------------------------------------------
 
@@ -20,6 +21,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
+//
+// Programmed by Josh Seigle as part of the OpenEphys GUI (http://open-ephys.org/)
+//
 // Modified by JS 1/30/2014: Updated op codes for firmware 0_4, added new functions (indicated in comments below)
 
 #include <vector>

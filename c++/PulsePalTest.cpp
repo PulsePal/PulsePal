@@ -1,4 +1,26 @@
-// PulsePalTest.cpp 
+/*
+------------------------------------------------------------------
+
+This file is part of the Pulse Pal project
+Copyright (C) 2014 Joshua Sanders
+https://sites.google.com/site/pulsepalwiki/home
+
+------------------------------------------------------------------
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*/
 // Test-program that calls updated Pulse Pal API functions
 // Josh Sanders, January 30 2013
 
@@ -38,7 +60,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	uint8_t nPulses = 4;
 	PulsePalObject.programCustomTrain(1, nPulses, customPulseTimes, customVoltages); // Program custom pulse train 1
 	PulsePalObject.setCustomTrainID(2, 1); // Set output channel 2 to use custom train 1
-	PulsePalObject.setCustomTrainLoop(2, 0); // Set output channel 2 to loop its custom pulse train until pulseTrainDuration seconds.
+	PulsePalObject.setCustomTrainLoop(2, 1); // Set output channel 2 to loop its custom pulse train until pulseTrainDuration seconds.
 	PulsePalObject.setPulseTrainDuration(2, 2); // Set output channel 2 to play (the loop) for 2 seconds
 
 	// Set output channel 1 to play synchronized pulses (for easy o-scope triggering - pulses aligned to train onsets on Ch2)

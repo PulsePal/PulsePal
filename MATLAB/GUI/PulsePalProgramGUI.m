@@ -1010,7 +1010,7 @@ function uipushtool1_ClickedCallback(hObject, eventdata, handles)
 global PulsePalSystem
 TemplatePath = fullfile(PulsePalSystem.PulsePalPath,'GUI','PulsePalProgram_Template.mat');
 load(TemplatePath);
-handles.Matrix = PulsePalMatrix;
+handles.Matrix = ParameterMatrix;
 set(handles.listbox1, 'Value', 1); set(handles.listbox2, 'Value', 1);
 MatrixRow2GUI(hObject, handles);
 
