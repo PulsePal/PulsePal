@@ -22,9 +22,9 @@ end
 if ~IsTimeSequence(CandidateTimes)  
     error('Error: Custom pulse times must always increase');
 end
-if (sum(rem(CandidateTimes,PulsePalSystem.CycleDuration)) > 0)  
-    errordlg(['Non-zero time values for Pulse Pal rev0.4 must be multiples of ' num2str(PulsePalSystem.CycleDuration) ' microseconds.'], 'Error');
-end
+% if (sum(rem(CandidateTimes,PulsePalSystem.CycleDuration)) > 0)  
+%     errordlg(['Non-zero time values for Pulse Pal rev0.4 must be multiples of ' num2str(PulsePalSystem.CycleDuration) ' microseconds.'], 'Error');
+% end
 if (CandidateTimes(length(CandidateTimes)) > 3600000000) 
     0; error('Error: Custom pulse times must be < 3600 s');
 end
