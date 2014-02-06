@@ -44,7 +44,7 @@ x = 0;
 while (Found == 0) && (x < length(Ports))
     x = x + 1;
     disp(['Trying port ' Ports{x}])
-    TestSer = serial(Ports{x}, 'BaudRate', 115200, 'Timeout', 1,'OutputBufferSize', 8000, 'InputBufferSize', 8000, 'DataTerminalReady', 'off');
+    TestSer = serial(Ports{x}, 'BaudRate', 115200, 'Timeout', 1,'OutputBufferSize', 8000, 'InputBufferSize', 8000, 'DataTerminalReady', 'off', 'tag', 'PulsePal');
     AvailablePort = 1;
     try
         fopen(TestSer);

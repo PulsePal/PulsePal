@@ -10,14 +10,6 @@ if nStamps > 1000
     error('Error: Pulse Pal r0.4 can only store 1000 pulses per stimulus train.');
 end
 
-if TrainID == 1
-    fwrite(PulsePalSystem.SerialPort, char(75));
-elseif TrainID == 2
-    fwrite(PulsePalSystem.SerialPort, char(76));
-else
-    error('The first argument must be the stimulus train ID (1 or 2)')
-end
-
 % Sanity-check PulseTimes and voltages
 CandidateTimes = uint32(PulseTimes*1000000);
 CandidateVoltages = Voltages;
@@ -63,6 +55,16 @@ else
         USBPacketLengthCorrectionByte = 0;
     end
 end
+
+if TrainID == 1
+    fwrite(PulsePalSystem.SerialPort, char(75));
+elseif TrainID == 2
+    fwrite(PulsePalSystem.SerialPort, char(76));
+else
+    error('The first argument must be the stimulus train ID (1 or 2)')
+end
+
+
 fwrite(PulsePalSystem.SerialPort, USBPacketLengthCorrectionByte, 'uint8');
 
 if USBPacketLengthCorrectionByte == 1

@@ -1,29 +1,26 @@
 /*
-------------------------------------------------------------------
+    ------------------------------------------------------------------
 
-This file is part of the Pulse Pal project
-Copyright (C) 2014 Joshua Sanders
-https://sites.google.com/site/pulsepalwiki/home
+    This file is part of the Open Ephys GUI
+    Copyright (C) 2013 Open Ephys
 
-------------------------------------------------------------------
+    ------------------------------------------------------------------
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
-//
-// Programmed by Josh Seigle as part of the OpenEphys GUI (http://open-ephys.org/)
-//
+
 // Modified by JS 1/30/2014: Updated op codes for firmware 0_4, added new functions (indicated in comments below)
 
 #ifndef __PULSEPAL_H_F2B7B63E__
@@ -43,68 +40,70 @@ class PulsePal
 {
 public:
 
-	// Initialization and termination
+    // Initialization and termination
     PulsePal();
     ~PulsePal();
     void initialize();
-	uint32_t PulsePal::getFirmwareVersion();
-	void disconnectClient();
+    uint32_t getFirmwareVersion();
+    void disconnectClient();
 
-	// Program single parameter
-	void setBiphasic(uint8_t channel, bool isBiphasic);
-	void setPhase1Voltage(uint8_t channel, float voltage);
-	void setPhase2Voltage(uint8_t channel, float voltage);
-	void setPhase1Duration(uint8_t channel, float timeInSeconds);
-	void setInterPhaseInterval(uint8_t channel, float timeInSeconds);
-	void setPhase2Duration(uint8_t channel, float timeInSeconds);
-	void setInterPulseInterval(uint8_t channel, float timeInSeconds);
-	void setBurstDuration(uint8_t channel, float timeInSeconds);
-	void setBurstInterval(uint8_t channel, float timeInSeconds);
-	void setPulseTrainDuration(uint8_t channel, float timeInSeconds);
-	void setPulseTrainDelay(uint8_t channel, float timeInSeconds);
-	void setTrigger1Link(uint8_t channel, uint8_t link_state);
-	void setTrigger2Link(uint8_t channel, uint8_t link_state);
-	void setCustomTrainID(uint8_t channel, uint8_t ID); // ID = 0: no custom train. ID = 1-2: custom trains 1 or 2
-	void setCustomTrainTarget(uint8_t channel, uint8_t target); // target = 0: Custom times define pulses Target = 1: They define bursts
-	void setCustomTrainLoop(uint8_t channel, uint8_t loop_state); // loop_state = 0: No loop 1: loop
+    void setDefaultParameters();
 
-	// Program all parameters
-	void programAllParams();
+    // Program single parameter
+    void setBiphasic(uint8_t channel, bool isBiphasic);
+    void setPhase1Voltage(uint8_t channel, float voltage);
+    void setPhase2Voltage(uint8_t channel, float voltage);
+    void setPhase1Duration(uint8_t channel, float timeInSeconds);
+    void setInterPhaseInterval(uint8_t channel, float timeInSeconds);
+    void setPhase2Duration(uint8_t channel, float timeInSeconds);
+    void setInterPulseInterval(uint8_t channel, float timeInSeconds);
+    void setBurstDuration(uint8_t channel, float timeInSeconds);
+    void setBurstInterval(uint8_t channel, float timeInSeconds);
+    void setPulseTrainDuration(uint8_t channel, float timeInSeconds);
+    void setPulseTrainDelay(uint8_t channel, float timeInSeconds);
+    void setTrigger1Link(uint8_t channel, uint8_t link_state);
+    void setTrigger2Link(uint8_t channel, uint8_t link_state);
+    void setCustomTrainID(uint8_t channel, uint8_t ID); // ID = 0: no custom train. ID = 1-2: custom trains 1 or 2
+    void setCustomTrainTarget(uint8_t channel, uint8_t target); // target = 0: Custom times define pulses Target = 1: They define bursts
+    void setCustomTrainLoop(uint8_t channel, uint8_t loop_state); // loop_state = 0: No loop 1: loop
 
-	// Program custom pulse train
-	void programCustomTrain(uint8_t ID, uint8_t nPulses, float customPulseTimes[], float customVoltages[]);
+    // Program all parameters
+    void programAllParams();
 
-	// Operations and settings
+    // Program custom pulse train
+    void programCustomTrain(uint8_t ID, uint8_t nPulses, float customPulseTimes[], float customVoltages[]);
+
+    // Operations and settings
     void triggerChannel(uint8_t channel);
-	void triggerChannels(uint8_t channel1, uint8_t channel2, uint8_t channel3, uint8_t channel4);
+    void triggerChannels(uint8_t channel1, uint8_t channel2, uint8_t channel3, uint8_t channel4);
     void updateDisplay(string line1, string line2);
-	void setFixedVoltage(uint8_t channel, float voltage);
-	void abortPulseTrains();
-	void setContinuousLoop(uint8_t channel, uint8_t state);
-	void setTriggerMode(uint8_t channel, uint8_t mode);
-	
-	// Fields
-	struct OutputParams {
-		int isBiphasic = 0;
-		float phase1Voltage = 5;
-		float phase2Voltage = -5;
-		float phase1Duration = 0.001;
-		float interPhaseInterval = 0.001;
-		float phase2Duration = 0.001;
-		float interPulseInterval = 0.01;
-		float burstDuration = 0;
-		float interBurstInterval = 0;
-		float pulseTrainDuration = 1;
-		float pulseTrainDelay = 0;
-		int linkTriggerChannel1 = 1;
-		int linkTriggerChannel2 = 0;
-		int customTrainID = 0;
-		int customTrainTarget = 0;
-		int customTrainLoop = 0;
-	} currentOutputParams[5]; // Use 1-indexing for the channels (output channels 1-4 = currentOutputParams[1]-currentOutputParams[4])
-	struct InputParams {
-		int triggerMode;
-	} currentInputParams[3]; // Use 1-indexing for the trigger channels
+    void setFixedVoltage(uint8_t channel, float voltage);
+    void abortPulseTrains();
+    void setContinuousLoop(uint8_t channel, uint8_t state);
+    void setTriggerMode(uint8_t channel, uint8_t mode);
+    
+    // Fields
+    struct OutputParams {
+        int isBiphasic;
+        float phase1Voltage;
+        float phase2Voltage;
+        float phase1Duration;
+        float interPhaseInterval;
+        float phase2Duration;
+        float interPulseInterval;
+        float burstDuration;
+        float interBurstInterval;
+        float pulseTrainDuration;
+        float pulseTrainDelay;
+        int linkTriggerChannel1;
+        int linkTriggerChannel2;
+        int customTrainID;
+        int customTrainTarget;
+        int customTrainLoop;
+    } currentOutputParams[5]; // Use 1-indexing for the channels (output channels 1-4 = currentOutputParams[1]-currentOutputParams[4])
+    struct InputParams {
+        int triggerMode;
+    } currentInputParams[3]; // Use 1-indexing for the trigger channels
 
 private:
     void constrain(uint32_t* value, uint32_t min, uint32_t max);
