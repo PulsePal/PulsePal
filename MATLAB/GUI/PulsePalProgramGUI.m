@@ -831,17 +831,17 @@ function pushbutton5_Callback(hObject, eventdata, handles)
 % connectivity)
 url =java.net.URL('http://tycho.usno.navy.mil/cgi-bin/timer.pl');
 
-% read the URL
+% read the test-URL to confirm connectivity
 try
-link = openStream(url);
-parse = java.io.InputStreamReader(link);
-snip = java.io.BufferedReader(parse);
-if ~isempty(snip)
-    web('https://sites.google.com/site/pulsepalwiki/parameter-guide');
-else
-    msgbox('Error: Internet connectivity is required for help documentation. See command window for url.')
-    disp('An illustrated parameter guide is available at: https://sites.google.com/site/pulsepalwiki/parameter-guide')
-end
+    link = openStream(url);
+    parse = java.io.InputStreamReader(link);
+    snip = java.io.BufferedReader(parse);
+    if ~isempty(snip)
+        system('start https://sites.google.com/site/pulsepalwiki/parameter-guide'); % Launch help site
+    else
+        msgbox('Error: Internet connectivity is required for help documentation. See command window for url.')
+        disp('An illustrated parameter guide is available at: https://sites.google.com/site/pulsepalwiki/parameter-guide')
+    end
 catch
     msgbox('Error: Internet connectivity is required for help documentation. See command window for url.')
     disp('An illustrated parameter guide is available at: https://sites.google.com/site/pulsepalwiki/parameter-guide')
