@@ -25,7 +25,7 @@
 
 
 // Firmware build number
-unsigned long FirmwareVersion = 4;
+unsigned long FirmwareVersion = 2;
 
 // initialize LCD library with the numbers of the interface pins
 // Pins matched with hello world LCD sketch
@@ -1284,7 +1284,7 @@ unsigned int ReturnUserValue(unsigned int LowerLimit, unsigned int UpperLimit, u
      // Initialize cursor starting positions and limits by unit type
      switch (Units) {
        case 0: {CursorPos = 0; CursorPosLeftLimit = 0; CursorPosRightLimit = 0;} break; // Format for Index
-       case 1: {CursorPos = 3; CursorPosLeftLimit = 0; CursorPosRightLimit = 8;} break; // Format for seconds
+       case 1: {CursorPos = 3; CursorPosLeftLimit = 0; CursorPosRightLimit = 7;} break; // Format for seconds
        case 2: {CursorPos = 2; CursorPosLeftLimit = 0; CursorPosRightLimit = 2;} break; // Format for volts
        case 3: {CursorPos = 0; CursorPosLeftLimit = 0; CursorPosRightLimit = 0;} break; // Format for Off/On
        case 4: {CursorPos = 0; CursorPosLeftLimit = 0; CursorPosRightLimit = 0;} break; // Format for Pulses/Bursts
