@@ -1,32 +1,28 @@
 /*
-------------------------------------------------------------------
+----------------------------------------------------------------------------
 
-This file is part of the Pulse Pal project
-Copyright (C) 2014 Joshua Sanders
-https://sites.google.com/site/pulsepalwiki/home
+This file is part of the PulsePal Project
+Copyright (C) 2014 Joshua I. Sanders, Cold Spring Harbor Laboratory, NY, USA
 
-------------------------------------------------------------------
+----------------------------------------------------------------------------
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+the Free Software Foundation, version 3.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+This program is distributed  WITHOUT ANY WARRANTY and without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
-// Test-program that calls updated Pulse Pal API functions
-// Josh Sanders, January 30 2013
+
+// Test-program that calls Pulse Pal API functions
 
 #include "stdafx.h"
 #include "PulsePal.h"
-#include <vector>
 
 int _tmain(int argc, _TCHAR* argv[])
 {
@@ -58,16 +54,16 @@ int _tmain(int argc, _TCHAR* argv[])
 	float customVoltages[4] = { 10, 2.5, -2.5, -10 };
 	float customPulseTimes[4] = { 0, 0.001, 0.002, 0.005};
 	uint8_t nPulses = 4;
-	PulsePalObject.programCustomTrain(1, nPulses, customPulseTimes, customVoltages); // Program custom pulse train 1
+	PulsePalObject.sendCustomPulseTrain(1, nPulses, customPulseTimes, customVoltages); // Program custom pulse train 1
 	PulsePalObject.setCustomTrainID(2, 1); // Set output channel 2 to use custom train 1
 	PulsePalObject.setCustomTrainLoop(2, 1); // Set output channel 2 to loop its custom pulse train until pulseTrainDuration seconds.
 	PulsePalObject.setPulseTrainDuration(2, 2); // Set output channel 2 to play (the loop) for 2 seconds
 
-	// Set output channel 1 to play synchronized pulses (for easy o-scope triggering - pulses aligned to train onsets on Ch2)
+	// Set output channel 1 to play pulses synchronized to channel 2 (for easy o-scope triggering - pulses aligned to waveform onsets on Ch2)
 	float customVoltages2[2] = { 5, 5 };
 	float customPulseTimes2[2] = { 0, 0.005 };
 	nPulses = 2;
-	PulsePalObject.programCustomTrain(2, nPulses, customPulseTimes2, customVoltages2);
+	PulsePalObject.sendCustomPulseTrain(2, nPulses, customPulseTimes2, customVoltages2);
 	PulsePalObject.setCustomTrainID(1, 2); // Set output channel 1 to use custom train 2
 	PulsePalObject.setCustomTrainLoop(1, 1); // Also loop this one
 	PulsePalObject.setPulseTrainDuration(1, 2);
