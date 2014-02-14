@@ -1,0 +1,1 @@
+Note: The PulsePal Python API currently supports Python 2.X only.

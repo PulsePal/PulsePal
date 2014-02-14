@@ -76,17 +76,17 @@ else
     end
 end
 
-if TrainID == 1
-    fwrite(PulsePalSystem.SerialPort, char(75));
-elseif TrainID == 2
-    fwrite(PulsePalSystem.SerialPort, char(76));
-else
+if ~((TrainID == 1) || (TrainID == 2))
     error('The first argument must be the stimulus train ID (1 or 2)')
 end
 
+if TrainID == 1
+    fwrite(PulsePalSystem.SerialPort, [75 USBPacketLengthCorrectionByte], 'uint8');
+else 
+    fwrite(PulsePalSystem.SerialPort, [76 USBPacketLengthCorrectionByte], 'uint8');
+end
 
-fwrite(PulsePalSystem.SerialPort, USBPacketLengthCorrectionByte, 'uint8');
-
+% Send number of pulses
 if USBPacketLengthCorrectionByte == 1
     fwrite(PulsePalSystem.SerialPort, nStamps+1, 'uint32');
 else
