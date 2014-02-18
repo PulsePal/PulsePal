@@ -109,7 +109,7 @@ unsigned long StimulusTrainEndTime[4] = {0}; // Stores time the stimulus train i
 unsigned long CustomPulseTimes[2][1001] = {0};
 byte CustomVoltages[2][1001] = {0};
 unsigned long LastLoopTime = 0;
-int PulseStatus[4] = {0}; // This is 0 if not delivering a pulse, 1 if delivering.
+boolean PulseStatus[4] = {0}; // This is 0 if not delivering a pulse, 1 if delivering.
 boolean BurstStatus[4] = {0}; // This is "true" during bursts and false during inter-burst intervals.
 boolean StimulusStatus[4] = {0}; // This is "true" for a channel when the stimulus train is actively being delivered
 boolean PreStimulusStatus[4] = {0}; // This is "true" for a channel during the pre-stimulus delay
@@ -138,7 +138,10 @@ char Value2Display[18] = {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
 int lastDebounceTime = 0; // to debounce the joystick button
 boolean lastButtonState = 0;
 boolean ChoiceMade = 0; // determines whether user has chosen a value from a list
-unsigned int UserValue = 0; // The current value displayed on a list of values (written to LCD when choosing parameters) 
+unsigned int UserValue = 0; // The current value displayed on a list of values (written to LCD when choosing parameters)
+char CommanderString[16] = " PULSE PAL v0.4";
+char ClientStringSuffix[11] = " Connected";
+char DefaultCommanderString[16] = " PULSE PAL v0.4";
 
 void setup() {
   // Enable EEPROM
@@ -191,7 +194,7 @@ void setup() {
 //    digitalWrite(LEDLine, LOW); //   
     RestoreParametersFromEEPROM();
     RestoreCustomStimuli();
-    write2Screen(" PULSE PAL v0.4"," Click for menu");
+    write2Screen(CommanderString," Click for menu");
     SystemTime = micros();
     LastLoopTime = SystemTime;
     DefaultInputLevel = 1 - TriggerLevel;
@@ -229,10 +232,7 @@ void loop() {
         write2Screen("   PULSE TRAIN","     ABORTED");
         delay(1000);
         if (inMenu == 0) {
-          switch (ConnectedToApp) {
-             case 0: {write2Screen(" PULSE PAL v0.4"," Click for menu");} break;
-             case 1: {write2Screen("MATLAB Connected"," Click for menu");} break;
-          }
+          write2Screen(CommanderString," Click for menu");
         } else {
           inMenu = 1;
           RefreshChannelMenu(SelectedChannel);
@@ -432,7 +432,10 @@ void loop() {
         write2Screen("Saving Settings",". .");
         // Store custom stimuli to EEPROM
         StoreCustomStimuli(); // UNCOMMENT WHEN FIXED - this overwrites stuff it shouldnt and doesn't write where it should
-        write2Screen(" PULSE PAL v0.4"," Click for menu");
+        for (int x = 0; x < 16; x++) {
+         CommanderString[x] = DefaultCommanderString[x];
+       } 
+        write2Screen(CommanderString," Click for menu");
        } break;
        // Set free-run mode
       case 82:{
@@ -447,10 +450,7 @@ void loop() {
       case 83: { // Clear stored parameters from EEPROM
        WipeEEPROM();
        if (inMenu == 0) {
-      switch (ConnectedToApp) {
-         case 0: {write2Screen(" PULSE PAL v0.4"," Click for menu");} break;
-         case 1: {write2Screen("MATLAB Connected"," Click for menu");} break;
-      }
+        write2Screen(CommanderString," Click for menu");
       } else {
         inMenu = 1;
         RefreshChannelMenu(SelectedChannel);
@@ -505,6 +505,16 @@ void loop() {
         SensorValue = analogRead(inByte2);
         SerialUSB.println(SensorValue);
         pinMode(inByte2, OUTPUT);
+      } break;
+      case 89: { // Receive new CommanderString (displayed on top line of OLED, i.e. "MATLAB connected"
+        for (int x = 0; x < 6; x++) {
+          while (SerialUSB.available() == 0) {}
+          CommanderString[x] = SerialUSB.read();
+        }
+        for (int x = 6; x < 16; x++) {
+          CommanderString[x] = ClientStringSuffix[x-6];
+        }
+        write2Screen(CommanderString," Click for menu");
       } break;
     }
 }
@@ -908,7 +918,7 @@ void UpdateSettingsMenu(int inByte) {
             case 7: {
               inMenu = 0;
               switch (ConnectedToApp) {
-                case 0: {write2Screen(" PULSE PAL v0.4"," Click for menu");} break;
+                case 0: {write2Screen(CommanderString," Click for menu");} break;
                 case 1: {write2Screen("MATLAB Connected"," Click for menu");} break;
               }
             } break;
@@ -1704,5 +1714,5 @@ void WipeEEPROM() {
   }
   write2Screen("Clearing Memory","     DONE! ");
   delay(1000);
-  write2Screen(" PULSE PAL v0.4"," Click for menu");
+  write2Screen(CommanderString," Click for menu");
 }

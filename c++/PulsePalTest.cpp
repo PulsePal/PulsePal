@@ -26,13 +26,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 int _tmain(int argc, _TCHAR* argv[])
 {
+	// Initialize
 	PulsePal PulsePalObject;
 	PulsePalObject.initialize();
-
-	// Get handshake byte and return firmware version
-	uint32_t FV = PulsePalObject.getFirmwareVersion(); 
+	uint32_t FV = PulsePalObject.getFirmwareVersion(); // Get handshake byte and return firmware version
 	std::cout << "Current firmware version:" << std::endl;
 	std::cout << FV << std::endl;
+	PulsePalObject.setClientIDString(" MyApp"); // A 6-character string specifying your app's name, that tops PulsePal's OLED menu tree
+	std::cin.get(); // Wait so you can see your app name (press return to continue)
 
 	// Set parameters for channels 1 and 3
 	PulsePalObject.setPhase1Voltage(1, 5); PulsePalObject.setPhase1Voltage(2, 5); // Set voltage to 5V on output channels 1 and 2

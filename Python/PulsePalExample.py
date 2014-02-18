@@ -27,7 +27,7 @@ myPulsePal.connect('COM4') # Connect to PulsePal on port COM4 (open port, handsh
 print(myPulsePal.firmwareVersion) # Print firmware version to the console
 
 # Examples of programming individual output channel parameters
-myPulsePal.programOutputChannelParam('isBiphasic', 1, 1) # Program channel 1 to use biphasic pulses
+myPulsePal.programOutputChannelParam('isBiphasic', 1, 1) # Program output channel 1 to use biphasic pulses
 myPulsePal.programOutputChannelParam('phase1Voltage', 1, 10) # Program channel 1 to use 10V for phase 1 of its biphasic pulses
 myPulsePal.programOutputChannelParam(3, 1, -10) # Parameters can be specified by their parameter code instead of their name
 myPulsePal.programOutputChannelParam('phase1Duration', 1, 0.001) # Example for a 32-bit time parameter
@@ -77,6 +77,7 @@ myPulsePal.setContinuousLoop(4, 0) # Set channel 4 to normal mode
 myPulsePal.setFixedVoltage(4,7) # Set output channel 4 to +7V, persistently 
 
 # Write text to PulsePal oLED display
+time.sleep(2)
 import time
 myPulsePal.setDisplay("PYTHON Connected", "Beware of fangs!") # Writes "Python Connected" on line 1 and "Beware of fangs" on line 2
 time.sleep(2)

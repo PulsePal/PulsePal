@@ -114,6 +114,10 @@ HandShakeOkByte = fread(PulsePalSystem.SerialPort, 1);
 if HandShakeOkByte == 75
     PulsePalSystem.FirmwareVersion = fread(PulsePalSystem.SerialPort, 1, 'uint32');
     switch PulsePalSystem.FirmwareVersion
+        case 2
+            PulsePalSystem.CycleDuration = 100; % Loops every 100us
+        case 3
+            PulsePalSystem.CycleDuration = 100; % Loops every 100us
         case 4
             PulsePalSystem.CycleDuration = 100; % Loops every 100us
     end
@@ -122,6 +126,5 @@ else
 end
 LastComPortUsed = Ports{Found};
 save(LastPortPath, 'LastComPortUsed');
+SendClientIDString('MATLAB');
 disp(['Pulse Pal connected on port ' Ports{Found}])
-clear Found g x Ports serialInfo Confirm ComPortPath LastComPortUsed PulsePalPath RegisteredPorts Temp ans  pos trash LastPortPath InList FinderPath AvailablePort
-PulsePalDisplay('MATLAB Connected', ' Click for menu');

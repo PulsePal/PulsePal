@@ -55,6 +55,7 @@ class PulsePalObject(object):
         Response = self.serialObject.read(5)
         fvBytes = Response[1:5]
         self.firmwareVersion = struct.unpack('<I',fvBytes)[0]
+        self.serialObject.write('YPYTHON')
         
     def disconnect(self):
         self.serialObject.write(chr(81))

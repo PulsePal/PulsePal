@@ -79,6 +79,7 @@ public:
     void abortPulseTrains();
     void setContinuousLoop(uint8_t channel, uint8_t state);
     void setTriggerMode(uint8_t channel, uint8_t mode);
+	void setClientIDString(string idString);
     
     // Fields
     struct OutputParams {

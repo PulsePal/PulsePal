@@ -310,6 +310,20 @@ void PulsePal::updateDisplay(string line1, string line2)
     serial.writeBytes((unsigned char*)Prefix.data(), Prefix.size());
 }
 
+void PulsePal::setClientIDString(string idString)
+{
+	string Prefix;
+	Prefix += 89;
+	int mSize = idString.size();
+	if (mSize == 6) {
+		Prefix.append(idString);
+		serial.writeBytes((unsigned char*)Prefix.data(), Prefix.size());
+	}
+	else {
+		std::cout << "ClientID must be 6 characters. ClientID NOT set." << std::endl;
+	}
+}
+
 void PulsePal::setFixedVoltage(uint8_t channel, float voltage) // JS 1/30/2014
 {
     uint8_t voltageByte = 0;
