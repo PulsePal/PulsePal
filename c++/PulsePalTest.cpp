@@ -74,7 +74,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	PulsePalObject.currentOutputParams[3].phase1Duration = .001; // set output channel 3 phase duration to 1ms
 	PulsePalObject.currentOutputParams[1].interPulseInterval = .2; // set output channel 1 pulse interval to 200ms
 	PulsePalObject.currentOutputParams[1].pulseTrainDuration = 2; // set output channel 1 train to 2 sec
-	PulsePalObject.programAllParams();
+	PulsePalObject.syncAllParams();
 
 	// Set hardware-trigger link (trigger channels to output channels)
 	PulsePalObject.setTrigger1Link(1, 1); // Link output channel 1 to trigger channel 1

@@ -40,7 +40,7 @@ myPulsePal.programTriggerChannelParam('triggerMode', 2, 0) # Set trigger channel
 myPulsePal.isBiphasic[1] = 0 # parameter arrays are 5 elements long. Use [1] for output channel 1. (i.e. isBiphasic[0] is not used)
 myPulsePal.phase1Voltage[2] = 7 # set output channel 2 to use 7V pulses
 myPulsePal.interPulseInterval[1:5] = [0.2]*4 # set all output channels to use inter-pulse interval = 0.1s
-myPulsePal.sendAllParams()
+myPulsePal.syncAllParams()
 
 # Programming a custom pulse train
 pulseTimes = [0, 0.2, 0.5, 1] # Create an array of pulse times in seconds

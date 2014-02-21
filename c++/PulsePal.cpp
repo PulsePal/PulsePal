@@ -425,7 +425,7 @@ void PulsePal::sendCustomPulseTrain(uint8_t ID, uint8_t nPulses, float customPul
     serial.writeBytes(messageBytes, nMessageBytes);
 }
 
-void PulsePal::programAllParams() {
+void PulsePal::syncAllParams() {
     uint8_t messageBytes[163] = { 0 };
     messageBytes[0] = 73;
     int pos = 1;

@@ -120,7 +120,7 @@ class PulsePalObject(object):
         if paramCode == 1:
             self.triggerMode[channel] = originalValue
             
-    def sendAllParams(self):
+    def syncAllParams(self):
         # First make a list data-type with all param values in an iteration of the loop.
         # Then pack them by data-type and append to string with + operation
         programByteString = chr(73)

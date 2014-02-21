@@ -65,8 +65,8 @@ public:
     void setCustomTrainTarget(uint8_t channel, uint8_t target); // target = 0: Custom times define pulses Target = 1: They define bursts
     void setCustomTrainLoop(uint8_t channel, uint8_t loop_state); // loop_state = 0: No loop 1: loop
 
-    // Program all parameters
-    void programAllParams();
+    // Program all parameters from object fields
+    void syncAllParams();
 
     // Upload a custom pulse train
     void sendCustomPulseTrain(uint8_t ID, uint8_t nPulses, float customPulseTimes[], float customVoltages[]);
