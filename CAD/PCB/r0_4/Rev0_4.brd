@@ -991,16 +991,16 @@ design rules under a new name.</description>
 <attribute name="NAME" x="52.832" y="33.782" size="1.016" layer="25" font="vector" ratio="10" rot="R180"/>
 <attribute name="VALUE" x="54.356" y="34.544" size="1.27" layer="27" ratio="10" rot="R180"/>
 </element>
-<element name="R6" library="SparkFun" package="AXIAL-0.3" value="1k" x="49.53" y="55.88" smashed="yes" rot="R180">
+<element name="R6" library="SparkFun" package="AXIAL-0.3" value="750" x="49.53" y="55.88" smashed="yes" rot="R180">
 <attribute name="VALUE" x="51.562" y="56.261" size="1.016" layer="21" font="vector" ratio="15" rot="R180"/>
 </element>
-<element name="R7" library="SparkFun" package="AXIAL-0.3" value="1k" x="69.342" y="35.814" smashed="yes" rot="R180">
+<element name="R7" library="SparkFun" package="AXIAL-0.3" value="750" x="69.342" y="35.814" smashed="yes" rot="R180">
 <attribute name="VALUE" x="71.374" y="36.195" size="1.016" layer="21" font="vector" ratio="15" rot="R180"/>
 </element>
-<element name="R8" library="SparkFun" package="AXIAL-0.3" value="1k" x="80.264" y="35.814" smashed="yes" rot="R180">
+<element name="R8" library="SparkFun" package="AXIAL-0.3" value="750" x="80.264" y="35.814" smashed="yes" rot="R180">
 <attribute name="VALUE" x="82.296" y="36.195" size="1.016" layer="21" font="vector" ratio="15" rot="R180"/>
 </element>
-<element name="R9" library="SparkFun" package="AXIAL-0.3" value="1k" x="87.884" y="56.388" smashed="yes">
+<element name="R9" library="SparkFun" package="AXIAL-0.3" value="750" x="87.884" y="56.388" smashed="yes">
 <attribute name="VALUE" x="85.852" y="56.007" size="1.016" layer="21" font="vector" ratio="15"/>
 </element>
 <element name="MISOMOSI" library="SparkFun" package="1X02" value="" x="43.561" y="78.74" smashed="yes" rot="R180">

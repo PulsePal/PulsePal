@@ -4151,10 +4151,10 @@ http://www.fairchildsemi.com/ds/LM/LM7805.pdf</description>
 <part name="LED2" library="SparkFun" deviceset="LED" device="3MM"/>
 <part name="LEDS" library="SparkFun" deviceset="M02" device="PTH"/>
 <part name="RN1" library="resistor-sil" deviceset="GE07R" device=""/>
-<part name="R6" library="SparkFun" deviceset="RESISTOR" device="AXIAL-0.3" value="1k"/>
-<part name="R7" library="SparkFun" deviceset="RESISTOR" device="AXIAL-0.3" value="1k"/>
-<part name="R8" library="SparkFun" deviceset="RESISTOR" device="AXIAL-0.3" value="1k"/>
-<part name="R9" library="SparkFun" deviceset="RESISTOR" device="AXIAL-0.3" value="1k"/>
+<part name="R6" library="SparkFun" deviceset="RESISTOR" device="AXIAL-0.3" value="750"/>
+<part name="R7" library="SparkFun" deviceset="RESISTOR" device="AXIAL-0.3" value="750"/>
+<part name="R8" library="SparkFun" deviceset="RESISTOR" device="AXIAL-0.3" value="750"/>
+<part name="R9" library="SparkFun" deviceset="RESISTOR" device="AXIAL-0.3" value="750"/>
 <part name="MISOMOSI" library="SparkFun" deviceset="M02" device="PTH"/>
 <part name="CLOCK" library="SparkFun" deviceset="M02" device="PTH"/>
 <part name="CS" library="SparkFun" deviceset="M02" device="PTH"/>
