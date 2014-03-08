@@ -76,7 +76,7 @@ myPulsePal.setContinuousLoop(4, 0) # Set channel 4 to normal mode
 
 myPulsePal.setFixedVoltage(4,7) # Set output channel 4 to +7V, persistently 
 
-# Write text to PulsePal oLED display
+# Write text to Pulse Pal oLED display
 time.sleep(2)
 import time
 myPulsePal.setDisplay("PYTHON Connected", "Beware of fangs!") # Writes "Python Connected" on line 1 and "Beware of fangs" on line 2

@@ -215,8 +215,8 @@ class PulsePalObject(object):
         voltage = ((voltage+10)/float(20))*255 # Convert volts to bytes
         messageBytes = struct.pack('BBB',79, channel, voltage)
         self.serialObject.write(messageBytes)
-    def setDisplay(self, Line1String, Line2String):
-        messageBytes = Line1String + chr(254) + Line2String
+    def setDisplay(self, row1String, row2String):
+        messageBytes = row1String + chr(254) + row2String
         messageSize = len(messageBytes)
         messageBytes = chr(78) + chr(messageSize) + messageBytes
         self.serialObject.write(messageBytes)   
