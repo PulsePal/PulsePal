@@ -3,6 +3,7 @@
 #include <LiquidCrystal.h>
 #include <stdio.h>
 #include <gpio.h>
+
 // Define a macro for compressing sequential bytes read from the serial port into long ints
 #define makeLong(msb, byte2, byte3, lsb) ((msb << 24) | (byte2 << 16) | (byte3 << 8) | (lsb))
 #define LED_PIN_PORT GPIOA
@@ -18,6 +19,11 @@
 #define WRSR 1
 #define READ 3
 #define WRITE 2
+
+// Reset macros
+#define SCB_AIRCR ((volatile uint32*) (0xE000ED00 + 0x0C))
+#define SCB_AIRCR_SYSRESETREQ (1 << 2)
+#define SCB_AIRCR_RESET ((0x05FA0000) | SCB_AIRCR_SYSRESETREQ)
 
 // Trigger line level configuration (0 = default high, trigger low (versions with optocoupler). 1 = default low, trigger high.)
 #define TriggerLevel 0
@@ -915,7 +921,12 @@ void UpdateSettingsMenu(int inByte) {
         } break;
         case 1: {
           switch(SelectedChannel) {
-            case 7: {
+            case 7: { // Reset
+            write2Screen(" "," ");
+            delay(1);
+              *(SCB_AIRCR) = SCB_AIRCR_RESET;
+            } break;
+            case 8: {
               inMenu = 0;
               switch (ConnectedToApp) {
                 case 0: {write2Screen(CommanderString," Click for menu");} break;
@@ -1112,7 +1123,8 @@ void RefreshChannelMenu(int ThisChannel) {
         case 4: {write2Screen("Output Channels","<  Channel 4  >");} break;
         case 5: {write2Screen("Trigger Channels","<  Channel 1  >");} break;
         case 6: {write2Screen("Trigger Channels","<  Channel 2  >");} break;
-        case 7: {write2Screen("<Click to exit>"," ");} break;
+        case 7: {write2Screen("     Reset     ","<Click to reset>");} break;
+        case 8: {write2Screen("<Click to exit>"," ");} break;
   }
 }
 void RefreshActionMenu(int ThisAction) {
@@ -1716,3 +1728,4 @@ void WipeEEPROM() {
   delay(1000);
   write2Screen(CommanderString," Click for menu");
 }
+
