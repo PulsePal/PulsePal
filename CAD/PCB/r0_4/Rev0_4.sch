@@ -3218,23 +3218,23 @@ Standard 2-pin 0.1" header. Use with straight break away headers (SKU : PRT-0011
 <text x="-6.35" y="6.35" size="0.508" layer="25">&gt;NAME</text>
 <text x="-6.35" y="5.08" size="0.508" layer="27">&gt;VALUE</text>
 </package>
-<package name="TDK_LAMBDA_5V_TO_BIPOLAR12V">
-<wire x1="-11.7475" y1="-11.43" x2="14.2875" y2="-11.43" width="0.127" layer="21"/>
-<wire x1="-11.7475" y1="-11.43" x2="-11.7475" y2="11.61" width="0.127" layer="21"/>
-<wire x1="-11.7475" y1="11.61" x2="14.2875" y2="11.61" width="0.127" layer="21"/>
-<wire x1="14.2875" y1="11.61" x2="14.2875" y2="-11.43" width="0.127" layer="21"/>
-<pad name="P$1" x="-10.16" y="7.71" drill="0.9" shape="long"/>
-<pad name="P$2" x="-10.16" y="-2.45" drill="0.9" shape="long"/>
-<pad name="P$3" x="-10.16" y="-7.53" drill="0.9" shape="long"/>
-<pad name="P$4" x="12.7" y="-7.53" drill="0.9" shape="long"/>
-<pad name="P$5" x="12.7" y="-2.45" drill="0.9" shape="long"/>
-<pad name="P$6" x="12.7" y="2.63" drill="0.9" shape="long"/>
-<pad name="P$7" x="12.7" y="7.71" drill="0.9" shape="long"/>
-<pad name="P$8" x="-7.62" y="10.16" drill="1.5"/>
-<pad name="P$9" x="10.16" y="-10.16" drill="1.5"/>
-<text x="-5.08" y="0" size="1.27" layer="21" font="vector">CC6-0512DF-E</text>
-<text x="-5.08" y="2.54" size="1.27" layer="21">TDK-Lambda</text>
-<text x="-5.08" y="-2.54" size="1.27" layer="21" font="vector">Voltage conv.</text>
+<package name="TDK_LAMBDA_5_TO_BI_12_125MA">
+<pad name="P$8" x="20.32" y="0" drill="1.3" shape="long"/>
+<pad name="P$9" x="2.54" y="-16" drill="1.3" shape="long"/>
+<pad name="P$1" x="0" y="-2.92" drill="0.9" shape="long"/>
+<pad name="P$2" x="0" y="-10.54" drill="0.9" shape="long"/>
+<pad name="P$3" x="0" y="-13.08" drill="0.9" shape="long"/>
+<pad name="P$7" x="22.86" y="-2.92" drill="0.9" shape="long"/>
+<pad name="P$5" x="22.86" y="-10.54" drill="0.9" shape="long"/>
+<pad name="P$4" x="22.86" y="-13.08" drill="0.9" shape="long"/>
+<pad name="P$6" x="22.86" y="-5.46" drill="0.9" shape="long"/>
+<wire x1="-2" y1="1.5" x2="-2" y2="-17.5" width="0.127" layer="21"/>
+<wire x1="-2" y1="-17.5" x2="24.5" y2="-17.5" width="0.127" layer="21"/>
+<wire x1="24.5" y1="-17.5" x2="24.5" y2="1.5" width="0.127" layer="21"/>
+<wire x1="24.5" y1="1.5" x2="-2" y2="1.5" width="0.127" layer="21"/>
+<text x="4.5" y="-5" size="1.27" layer="21" font="vector">CC3-0512DF-E</text>
+<text x="0.5" y="-8.5" size="1.27" layer="21" font="vector">DC Voltage Converter</text>
+<text x="6" y="-12" size="1.27" layer="21" font="vector">TDK Lambda</text>
 </package>
 </packages>
 <symbols>
@@ -3248,19 +3248,18 @@ Standard 2-pin 0.1" header. Use with straight break away headers (SKU : PRT-0011
 <pin name="SIGNAL" x="-7.62" y="0" visible="off"/>
 <pin name="GND" x="2.54" y="-10.16" visible="off" length="middle" rot="R90"/>
 </symbol>
-<symbol name="TDK_LAMBDA_5V_TO_BIPOLAR12V">
-<wire x1="-5.08" y1="-5.08" x2="-5.08" y2="5.08" width="0.254" layer="94"/>
-<wire x1="-5.08" y1="5.08" x2="5.08" y2="5.08" width="0.254" layer="94"/>
-<wire x1="5.08" y1="5.08" x2="5.08" y2="2.54" width="0.254" layer="94"/>
-<wire x1="5.08" y1="2.54" x2="5.08" y2="-5.08" width="0.254" layer="94"/>
-<wire x1="5.08" y1="-5.08" x2="-5.08" y2="-5.08" width="0.254" layer="94"/>
-<pin name="1" x="-10.16" y="5.08" length="middle"/>
-<pin name="2" x="-10.16" y="-2.54" length="middle"/>
-<pin name="3" x="-10.16" y="-5.08" length="middle"/>
-<pin name="4" x="10.16" y="-5.08" length="middle" rot="R180"/>
-<pin name="5" x="10.16" y="-2.54" length="middle" rot="R180"/>
-<pin name="6" x="10.16" y="2.54" length="middle" rot="R180"/>
-<pin name="7" x="10.16" y="5.08" length="middle" rot="R180"/>
+<symbol name="TDK_LAMBDA_5_TO_BI_12_125MA">
+<wire x1="-2.54" y1="5.08" x2="-2.54" y2="-7.62" width="0.254" layer="94"/>
+<wire x1="-2.54" y1="5.08" x2="5.08" y2="5.08" width="0.254" layer="94"/>
+<wire x1="5.08" y1="5.08" x2="5.08" y2="-7.62" width="0.254" layer="94"/>
+<wire x1="5.08" y1="-7.62" x2="-2.54" y2="-7.62" width="0.254" layer="94"/>
+<pin name="P$1" x="-7.62" y="2.54" length="middle"/>
+<pin name="P$2" x="-7.62" y="-2.54" length="middle"/>
+<pin name="P$3" x="-7.62" y="-5.08" length="middle"/>
+<pin name="P$4" x="10.16" y="-5.08" length="middle" rot="R180"/>
+<pin name="P$5" x="10.16" y="-2.54" length="middle" rot="R180"/>
+<pin name="P$6" x="10.16" y="0" length="middle" rot="R180"/>
+<pin name="P$7" x="10.16" y="2.54" length="middle" rot="R180"/>
 </symbol>
 </symbols>
 <devicesets>
@@ -3280,20 +3279,20 @@ Standard 2-pin 0.1" header. Use with straight break away headers (SKU : PRT-0011
 </device>
 </devices>
 </deviceset>
-<deviceset name="TDK_LAMBDA_5_TO_BIPOLAR12V">
+<deviceset name="TDK_LAMBDA_5_TO_BI_12_125MA">
 <gates>
-<gate name="G$1" symbol="TDK_LAMBDA_5V_TO_BIPOLAR12V" x="0" y="0"/>
+<gate name="G$1" symbol="TDK_LAMBDA_5_TO_BI_12_125MA" x="0" y="2.54"/>
 </gates>
 <devices>
-<device name="" package="TDK_LAMBDA_5V_TO_BIPOLAR12V">
+<device name="" package="TDK_LAMBDA_5_TO_BI_12_125MA">
 <connects>
-<connect gate="G$1" pin="1" pad="P$1"/>
-<connect gate="G$1" pin="2" pad="P$2"/>
-<connect gate="G$1" pin="3" pad="P$3"/>
-<connect gate="G$1" pin="4" pad="P$4"/>
-<connect gate="G$1" pin="5" pad="P$5"/>
-<connect gate="G$1" pin="6" pad="P$6"/>
-<connect gate="G$1" pin="7" pad="P$7"/>
+<connect gate="G$1" pin="P$1" pad="P$1"/>
+<connect gate="G$1" pin="P$2" pad="P$2"/>
+<connect gate="G$1" pin="P$3" pad="P$3"/>
+<connect gate="G$1" pin="P$4" pad="P$4"/>
+<connect gate="G$1" pin="P$5" pad="P$5"/>
+<connect gate="G$1" pin="P$6" pad="P$6"/>
+<connect gate="G$1" pin="P$7" pad="P$7"/>
 </connects>
 <technologies>
 <technology name=""/>
@@ -4168,7 +4167,7 @@ http://www.fairchildsemi.com/ds/LM/LM7805.pdf</description>
 <part name="GND4" library="SparkFun" deviceset="GND" device=""/>
 <part name="P+6" library="SparkFun" deviceset="VCC" device=""/>
 <part name="GND5" library="SparkFun" deviceset="GND" device=""/>
-<part name="U$7" library="JoshParts" deviceset="TDK_LAMBDA_5_TO_BIPOLAR12V" device=""/>
+<part name="U$8" library="JoshParts" deviceset="TDK_LAMBDA_5_TO_BI_12_125MA" device=""/>
 </parts>
 <sheets>
 <sheet>
@@ -4250,7 +4249,7 @@ http://www.fairchildsemi.com/ds/LM/LM7805.pdf</description>
 <instance part="GND4" gate="1" x="-55.88" y="10.16"/>
 <instance part="P+6" gate="1" x="68.58" y="-2.54"/>
 <instance part="GND5" gate="1" x="83.82" y="-20.32"/>
-<instance part="U$7" gate="G$1" x="83.82" y="-7.62"/>
+<instance part="U$8" gate="G$1" x="81.28" y="-7.62"/>
 </instances>
 <busses>
 </busses>
@@ -4382,10 +4381,11 @@ http://www.fairchildsemi.com/ds/LM/LM7805.pdf</description>
 <wire x1="73.66" y1="-10.16" x2="71.12" y2="-10.16" width="0.1524" layer="91"/>
 <wire x1="71.12" y1="-10.16" x2="71.12" y2="-12.7" width="0.1524" layer="91"/>
 <wire x1="71.12" y1="-12.7" x2="73.66" y2="-12.7" width="0.1524" layer="91"/>
-<pinref part="U$7" gate="G$1" pin="2"/>
-<pinref part="U$7" gate="G$1" pin="3"/>
+<pinref part="U$8" gate="G$1" pin="P$2"/>
+<pinref part="U$8" gate="G$1" pin="P$3"/>
 <junction x="73.66" y="-12.7"/>
-<pinref part="U$7" gate="G$1" pin="5"/>
+<pinref part="U$8" gate="G$1" pin="P$5"/>
+<wire x1="93.98" y1="-10.16" x2="91.44" y2="-10.16" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="N$8" class="0">
@@ -4611,7 +4611,8 @@ http://www.fairchildsemi.com/ds/LM/LM7805.pdf</description>
 <segment>
 <pinref part="P+6" gate="1" pin="VCC"/>
 <wire x1="73.66" y1="-2.54" x2="68.58" y2="-2.54" width="0.1524" layer="91"/>
-<pinref part="U$7" gate="G$1" pin="1"/>
+<pinref part="U$8" gate="G$1" pin="P$1"/>
+<wire x1="73.66" y1="-2.54" x2="73.66" y2="-5.08" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="N$23" class="0">
@@ -4621,7 +4622,8 @@ http://www.fairchildsemi.com/ds/LM/LM7805.pdf</description>
 <pinref part="TL084" gate="P" pin="V-"/>
 <wire x1="93.98" y1="-12.7" x2="104.14" y2="-12.7" width="0.1524" layer="91"/>
 <wire x1="104.14" y1="-12.7" x2="104.14" y2="5.08" width="0.1524" layer="91"/>
-<pinref part="U$7" gate="G$1" pin="4"/>
+<pinref part="U$8" gate="G$1" pin="P$4"/>
+<wire x1="93.98" y1="-12.7" x2="91.44" y2="-12.7" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="N$28" class="0">
@@ -4645,7 +4647,9 @@ http://www.fairchildsemi.com/ds/LM/LM7805.pdf</description>
 <junction x="83.82" y="5.08"/>
 <wire x1="83.82" y1="5.08" x2="93.98" y2="5.08" width="0.1524" layer="91"/>
 <wire x1="93.98" y1="5.08" x2="93.98" y2="-2.54" width="0.1524" layer="91"/>
-<pinref part="U$7" gate="G$1" pin="7"/>
+<wire x1="93.98" y1="-2.54" x2="93.98" y2="-5.08" width="0.1524" layer="91"/>
+<pinref part="U$8" gate="G$1" pin="P$7"/>
+<wire x1="93.98" y1="-5.08" x2="91.44" y2="-5.08" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="N$29" class="0">
