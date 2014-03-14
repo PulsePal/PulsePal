@@ -1070,7 +1070,7 @@ void UpdateSettingsMenu(int inByte) {
         }
       }
       if (inMenu == 3) {SelectedStimMode = SelectedStimMode - 1;}
-      if (SelectedChannel == 0) {SelectedChannel = 7;}
+      if (SelectedChannel == 0) {SelectedChannel = 8;}
       if (SelectedAction == 0) {SelectedAction = 17;}
       if (SelectedStimMode == 0) {SelectedStimMode = 4;}
     }
@@ -1086,7 +1086,7 @@ void UpdateSettingsMenu(int inByte) {
         }
       }
       if (inMenu == 3) {SelectedStimMode = SelectedStimMode + 1;}
-      if (SelectedChannel == 8) {SelectedChannel = 1;}
+      if (SelectedChannel == 9) {SelectedChannel = 1;}
       if (SelectedAction == 18) {SelectedAction = 1;}
       if (SelectedStimMode == 5) {SelectedStimMode = 1;}
     }
