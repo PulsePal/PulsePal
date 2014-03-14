@@ -1123,7 +1123,7 @@ void RefreshChannelMenu(int ThisChannel) {
         case 4: {write2Screen("Output Channels","<  Channel 4  >");} break;
         case 5: {write2Screen("Trigger Channels","<  Channel 1  >");} break;
         case 6: {write2Screen("Trigger Channels","<  Channel 2  >");} break;
-        case 7: {write2Screen("     Reset     ","<Click to reset>");} break;
+        case 7: {write2Screen("    -RESET-       ","<Click to reset>");} break;
         case 8: {write2Screen("<Click to exit>"," ");} break;
   }
 }
