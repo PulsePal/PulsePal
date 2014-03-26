@@ -438,6 +438,9 @@ void loop() {
         write2Screen("Saving Settings",". .");
         // Store custom stimuli to EEPROM
         StoreCustomStimuli(); // UNCOMMENT WHEN FIXED - this overwrites stuff it shouldnt and doesn't write where it should
+        for (int x = 0; x < 16; x++) {
+         CommanderString[x] = DefaultCommanderString[x];
+        } 
         write2Screen(CommanderString," Click for menu");
        } break;
        // Set free-run mode

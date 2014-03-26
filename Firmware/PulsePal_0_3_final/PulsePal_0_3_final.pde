@@ -148,6 +148,7 @@ unsigned int UserValue = 0; // The current value displayed on a list of values (
 char CommanderString[16] = " PULSE PAL v0.3";
 char ClientStringSuffix[11] = " Connected";
 char DefaultCommanderString[16] = " PULSE PAL v0.3";
+byte ValidEEPROMProgram = 0;
 
 void setup() {
   // Enable EEPROM
@@ -199,6 +200,9 @@ void setup() {
 //    delay(1000);
 //    digitalWrite(LEDLine, LOW); //   
     RestoreParametersFromEEPROM();
+    if (ValidEEPROMProgram != 1) {
+      LoadDefaultParameters();
+    }
     RestoreCustomStimuli();
     write2Screen(CommanderString," Click for menu");
     SystemTime = micros();
@@ -258,7 +262,6 @@ void loop() {
         ConnectedToApp = 1;
       } break;
       case 73: { // Program the module - total program (faster than item-wise in some instances)
-        digitalWrite(LEDLine, HIGH); //
         for (int x = 0; x < 4; x++) {
           Phase1Duration[x] = SerialReadLong();
           InterPhaseInterval[x] = SerialReadLong();
@@ -285,7 +288,6 @@ void loop() {
        while (SerialUSB.available() == 0) {} TriggerMode[0] = SerialUSB.read(); 
        while (SerialUSB.available() == 0) {} TriggerMode[1] = SerialUSB.read();
        SerialUSB.write(1); // Send confirm byte
-       digitalWrite(LEDLine, LOW);
        for (int x = 0; x < 4; x++) {
          if ((BurstDuration[x] == 0) || (BurstInterval[x] == 0)) {UsesBursts[x] = false;} else {UsesBursts[x] = true;}
          if (CustomTrainTarget[x] == 1) {UsesBursts[x] = true;}
@@ -1547,7 +1549,7 @@ void PrepareOutputChannelMemoryPage2(byte ChannelNum) {
   PageBytes[28] = 0;
   PageBytes[29] = 0;
   PageBytes[30] = 0;
-  PageBytes[31] = 0;
+  PageBytes[31] = 1;
 }
 void breakLong(unsigned long LongInt2Break) {
   //BrokenBytes is a global array for the output of long int break operations
@@ -1597,6 +1599,7 @@ void RestoreParametersFromEEPROM() {
     TriggerAddress[1][3] = PageBytes[13];
     CustomTrainLoop[Chan] = PageBytes[14];
   }
+  ValidEEPROMProgram = PageBytes[31];
 }
 
 void StoreCustomStimuli() {
@@ -1728,4 +1731,43 @@ void WipeEEPROM() {
   write2Screen("Clearing Memory","     DONE! ");
   delay(1000);
   write2Screen(CommanderString," Click for menu");
+}
+
+void LoadDefaultParameters() {
+  // This function is called on boot if the EEPROM has an invalid program (or no program).
+  for (int x = 0; x < 4; x++) {
+      Phase1Duration[x] = 1000;
+      InterPhaseInterval[x] = 1000;
+      Phase2Duration[x] = 1000;
+      InterPulseInterval[x] = 10000;
+      BurstDuration[x] = 0;
+      BurstInterval[x] = 0;
+      PulseTrainDuration[x] = 1000000;
+      PulseTrainDelay[x] = 0;
+      IsBiphasic[x] = 0;
+      Phase1Voltage[x] = 192;
+      Phase2Voltage[x] = 192;
+      CustomTrainID[x] = 0;
+      CustomTrainTarget[x] = 0;
+      CustomTrainLoop[x] = 0;
+      UsesBursts[x] = 0;
+    }
+    for (int y = 0; y < 4; y++) {
+      TriggerAddress[0][y] = 1;
+    }
+    for (int y = 0; y < 4; y++) {
+      TriggerAddress[1][y] = 0;
+    }
+   TriggerMode[0] = 0; 
+   TriggerMode[1] = 0;
+   // Store default parameters to EEPROM
+    EEPROM_address = 0;
+    for (int x = 0; x < 4; x++) {
+      PrepareOutputChannelMemoryPage1(x);
+      WriteEEPROMPage(PageBytes, 32, EEPROM_address);
+      EEPROM_address = EEPROM_address + 32;
+      PrepareOutputChannelMemoryPage2(x);
+      WriteEEPROMPage(PageBytes, 32, EEPROM_address);
+      EEPROM_address = EEPROM_address + 32;
+    }
 }

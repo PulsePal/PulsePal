@@ -18,26 +18,24 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-function InitPulsePalHardware
+function InitPulsePalHardware(varargin)
 
 global PulsePalSystem
-ClosePreviousPulsePalInstances;
 disp('Searching for Pulse Pal. Please wait.')
 
-% Make list of all ports
-if ispc
-    Ports = FindLeafLabsPorts;
+if nargin == 1
+    Ports = {upper(varargin{1})};
 else
-    [trash, RawSerialPortList] = system('ls /dev/tty.*');
-    Ports = ParseCOMString_UNIX(RawSerialPortList);
+    % Make list of all ports
+    if ispc
+        Ports = FindLeafLabsPorts;
+    else
+        [trash, RawSerialPortList] = system('ls /dev/tty.*');
+        Ports = ParseCOMString_UNIX(RawSerialPortList);
+    end
 end
 if isempty(Ports)
-    try
-        fclose(instrfind)
-    catch
-        error('Could not find a valid Pulse Pal.');
-    end
-    clear instrfind
+    error('Could not find a valid Pulse Pal: no available serial ports found.');
 end
 
 % Make it search on the last successful port first

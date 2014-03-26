@@ -17,15 +17,21 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
+function PulsePal(varargin)
 
+if nargin == 1
+    TargetPort = varargin{1};
+end
+ClosePreviousPulsePalInstances;
 
 try
     evalin('base', 'PulsePalSystem;');
     disp('Pulse Pal is already open.');
 catch
     warning off
-    global PulsePalSystem
+    global PulsePalSystem;
     if ~verLessThan('matlab', '7.6.0')
+        evalin('base','global PulsePalSystem;');
         evalin('base','PulsePalSystem = PulsePalObject;');
     else
         PulsePalSystem = struct;
@@ -40,9 +46,15 @@ catch
 end
 
 try
-    evalin('base','InitPulsePalHardware;')
+    if nargin == 1
+        InitPulsePalHardware(TargetPort);
+    else
+        InitPulsePalHardware;
+    end
 catch
     evalin('base','delete(PulsePalSystem)')
     evalin('base','clear PulsePalSystem') 
+    rethrow(lasterror)
     msgbox('Error: Unable to connect to Pulse Pal.', 'Modal')
+    
 end

@@ -20,6 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 function LeafLabsPorts = FindLeafLabsPorts
 [Status RawString] = system('wmic path Win32_SerialPort Where "Caption LIKE ''%Maple%''" Get DeviceID'); % Search for Maple serial USB port
+if strfind(RawString, '''wmic'' is not recognized')
+    error('Error: Must call PulsePal with a com port argument (i.e. PulsePal(''COM3'') in Windows XP Home edition and Windows 2000.')
+end
 PortLocations = strfind(RawString, 'COM');
 LeafLabsPorts = cell(1,100);
 nPorts = length(PortLocations);
