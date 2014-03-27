@@ -101,6 +101,10 @@ int SelectedChannel = 0;
 int SelectedAction = 1;
 int SelectedStimMode = 1;
 boolean NeedUpdate = 0; // If a new menu item is selected, the screen must be updated
+boolean SerialReadTimedout = 0; // Goes to 1 if a serial read timed out, causing all subsequent serial reads to skip until next main loop iteration.
+int SerialCurrentTime = 0; // Current time (millis) for serial read timeout
+int SerialReadStartTime = 0; // Time the serial read was started
+byte Timeout = 200; // Times out after 200ms
 
 // Variables used in stimulus playback
 byte inByte; byte inByte2; byte inByte3; byte inByte4; byte CommandByte;
@@ -211,6 +215,10 @@ void setup() {
 }
 
 void loop() {
+  if (SerialReadTimedout == 1) {
+    HandleReadTimeout(); // Notifies user of error, then prompts to click and restores DEFAULT channel settings.
+    SerialReadTimedout = 0;
+  }
   if (Stimulating == 0) {
     if (WasStimulating) {
       WasStimulating = 0;
@@ -273,20 +281,20 @@ void loop() {
           PulseTrainDelay[x] = SerialReadLong();
         }
         for (int x = 0; x < 4; x++) {
-          while (SerialUSB.available() == 0) {} IsBiphasic[x] = SerialUSB.read();
-          while (SerialUSB.available() == 0) {} Phase1Voltage[x] = SerialUSB.read();
-          while (SerialUSB.available() == 0) {} Phase2Voltage[x] = SerialUSB.read();
-          while (SerialUSB.available() == 0) {} CustomTrainID[x] = SerialUSB.read();
-          while (SerialUSB.available() == 0) {} CustomTrainTarget[x] = SerialUSB.read();
-          while (SerialUSB.available() == 0) {} CustomTrainLoop[x] = SerialUSB.read();
+          IsBiphasic[x] = SerialReadByte();
+          Phase1Voltage[x] = SerialReadByte();
+          Phase2Voltage[x] = SerialReadByte();
+          CustomTrainID[x] = SerialReadByte();
+          CustomTrainTarget[x] = SerialReadByte();
+          CustomTrainLoop[x] = SerialReadByte();
         }
        for (int x = 0; x < 2; x++) { // Read 8 trigger address bytes
          for (int y = 0; y < 4; y++) {
-           while (SerialUSB.available() == 0) {} TriggerAddress[x][y] = SerialUSB.read();
+           TriggerAddress[x][y] = SerialReadByte();
          }
        }
-       while (SerialUSB.available() == 0) {} TriggerMode[0] = SerialUSB.read(); 
-       while (SerialUSB.available() == 0) {} TriggerMode[1] = SerialUSB.read();
+       TriggerMode[0] = SerialReadByte(); 
+       TriggerMode[1] = SerialReadByte();
        SerialUSB.write(1); // Send confirm byte
        for (int x = 0; x < 4; x++) {
          if ((BurstDuration[x] == 0) || (BurstInterval[x] == 0)) {UsesBursts[x] = false;} else {UsesBursts[x] = true;}
@@ -297,15 +305,13 @@ void loop() {
       
       // Program the module - one parameter
       case 74: {
-        while (SerialUSB.available() == 0) {}
-        inByte2 = SerialUSB.read();
-        while (SerialUSB.available() == 0) {} 
-        inByte3 = SerialUSB.read(); // inByte3 = channel (1-4)
+        inByte2 = SerialReadByte();
+        inByte3 = SerialReadByte(); // inByte3 = channel (1-4)
         inByte3 = inByte3 - 1; // Convert channel for zero-indexing
         switch (inByte2) { 
-           case 1: {while (SerialUSB.available() == 0) {} IsBiphasic[inByte3] = SerialUSB.read();} break;
-           case 2: {while (SerialUSB.available() == 0) {} Phase1Voltage[inByte3] = SerialUSB.read();} break;
-           case 3: {while (SerialUSB.available() == 0) {} Phase2Voltage[inByte3] = SerialUSB.read();} break;
+           case 1: {IsBiphasic[inByte3] = SerialReadByte();} break;
+           case 2: {Phase1Voltage[inByte3] = SerialReadByte();} break;
+           case 3: {Phase2Voltage[inByte3] = SerialReadByte();} break;
            case 4: {Phase1Duration[inByte3] = SerialReadLong();} break;
            case 5: {InterPhaseInterval[inByte3] = SerialReadLong();} break;
            case 6: {Phase2Duration[inByte3] = SerialReadLong();} break;
@@ -314,12 +320,12 @@ void loop() {
            case 9: {BurstInterval[inByte3] = SerialReadLong();} break;
            case 10: {PulseTrainDuration[inByte3] = SerialReadLong();} break;
            case 11: {PulseTrainDelay[inByte3] = SerialReadLong();} break;
-           case 12: {while (SerialUSB.available() == 0) {} inByte4 = SerialUSB.read(); TriggerAddress[0][inByte3] = inByte4;} break;
-           case 13: {while (SerialUSB.available() == 0) {} inByte4 = SerialUSB.read(); TriggerAddress[1][inByte3] = inByte4;} break;
-           case 14: {while (SerialUSB.available() == 0) {} CustomTrainID[inByte3] = SerialUSB.read();} break;
-           case 15: {while (SerialUSB.available() == 0) {} CustomTrainTarget[inByte3] = SerialUSB.read();} break;
-           case 16: {while (SerialUSB.available() == 0) {} CustomTrainLoop[inByte3] = SerialUSB.read();} break;
-           case 128: {while (SerialUSB.available() == 0) {} TriggerMode[inByte3] = SerialUSB.read();} break;
+           case 12: {inByte4 = SerialReadByte(); TriggerAddress[0][inByte3] = inByte4;} break;
+           case 13: {inByte4 = SerialReadByte(); TriggerAddress[1][inByte3] = inByte4;} break;
+           case 14: {CustomTrainID[inByte3] = SerialReadByte();} break;
+           case 15: {CustomTrainTarget[inByte3] = SerialReadByte();} break;
+           case 16: {CustomTrainLoop[inByte3] = SerialReadByte();} break;
+           case 128: {TriggerMode[inByte3] = SerialReadByte();} break;
         }
         if (inByte2 < 14) {
           if ((BurstDuration[inByte3] == 0) || (BurstInterval[inByte3] == 0)) {UsesBursts[inByte3] = false;} else {UsesBursts[inByte3] = true;}
@@ -332,15 +338,13 @@ void loop() {
       // Program custom stimulus 1
       case 75: {
         digitalWrite(LEDLine, HIGH); //
-        while (SerialUSB.available() == 0) {}
-        USBPacketCorrectionByte = SerialUSB.read();
+        USBPacketCorrectionByte = SerialReadByte();
         CustomTrainNpulses[0] = SerialReadLong();
         for (int x = 0; x < CustomTrainNpulses[0]; x++) {
           CustomPulseTimes[0][x] = SerialReadLong();
         }
         for (int x = 0; x < CustomTrainNpulses[0]; x++) {
-          while (SerialUSB.available() == 0) {} 
-          CustomVoltages[0][x] = SerialUSB.read();
+          CustomVoltages[0][x] = SerialReadByte();
         }
         if (USBPacketCorrectionByte == 1) {
           USBPacketCorrectionByte = 0;
@@ -352,15 +356,13 @@ void loop() {
       // Program custom stimulus 2
       case 76: {
         digitalWrite(LEDLine, HIGH); //
-        while (SerialUSB.available() == 0) {}
-        USBPacketCorrectionByte = SerialUSB.read();
+        USBPacketCorrectionByte = SerialReadByte();
         CustomTrainNpulses[1] = SerialReadLong();
         for (int x = 0; x < CustomTrainNpulses[1]; x++) {
           CustomPulseTimes[1][x] = SerialReadLong();
         }
         for (int x = 0; x < CustomTrainNpulses[1]; x++) {
-          while (SerialUSB.available() == 0) {} 
-          CustomVoltages[1][x] = SerialUSB.read();
+          CustomVoltages[1][x] = SerialReadByte();
         }
         if (USBPacketCorrectionByte == 1) {
           USBPacketCorrectionByte = 0;
@@ -371,8 +373,7 @@ void loop() {
       } break;      
       // Soft-trigger the module
       case 77: {
-        while (SerialUSB.available() == 0) {}
-        inByte2 = SerialUSB.read();
+        inByte2 = SerialReadByte();
         for (int x = 0; x < 4; x++) {
           PreStimulusStatus[x] = bitRead(inByte2, x);
           if (PreStimulusStatus[x] == 1) {
@@ -388,12 +389,10 @@ void loop() {
          lcd.home(); 
          byte ByteCount = 0;
         // read all the available characters
-        while (SerialUSB.available() == 0) {}
-        inByte2 = SerialUSB.read(); // Total length of message to follow (including newline)
+        inByte2 = SerialReadByte(); // Total length of message to follow (including newline)
         while (ByteCount < inByte2) {
             // display each character to the LCD
-            while (SerialUSB.available() == 0) {}
-            inByte = SerialUSB.read();
+            inByte = SerialReadByte();
             if (inByte != 254) {
               lcd.write(inByte);
             } else {
@@ -404,11 +403,9 @@ void loop() {
       } break;
       case 79: {
         // Write specific voltage to output channel (not a pulse train) 
-        while (SerialUSB.available() == 0) {}
-        inByte = SerialUSB.read();
+        inByte = SerialReadByte();
         inByte = inByte - 1; // Convert for zero-indexing
-        while (SerialUSB.available() == 0) {}
-        inByte2 = SerialUSB.read();
+        inByte2 = SerialReadByte();
         DACValues[inByte] = inByte2;
         dacWrite(DACValues);
         SerialUSB.write(1); // Send confirm byte
@@ -447,11 +444,9 @@ void loop() {
        } break;
        // Set free-run mode
       case 82:{
-        while (SerialUSB.available() == 0) {}
-        inByte2 = SerialUSB.read();
+        inByte2 = SerialReadByte();
         inByte2 = inByte2 - 1; // Convert for zero-indexing
-        while (SerialUSB.available() == 0) {}
-        inByte3 = SerialUSB.read();
+        inByte3 = SerialReadByte();
         ContinuousLoopMode[inByte2] = inByte3;
         SerialUSB.write(1);
       } break;
@@ -465,24 +460,19 @@ void loop() {
       }
      } break;
      case 84: {
-        while (SerialUSB.available() == 0) {}
-        inByte2 = SerialUSB.read();
+        inByte2 = SerialReadByte();
         EEPROM_address = inByte2;
-        while (SerialUSB.available() == 0) {}
-        nBytesToWrite = SerialUSB.read();
+        nBytesToWrite = SerialReadByte();
         for (int i = 0; i < nBytesToWrite; i++) {
-        while (SerialUSB.available() == 0) {}
-        PageBytes[i] =  SerialUSB.read();
+        PageBytes[i] = SerialReadByte();
         }
         WriteEEPROMPage(PageBytes, nBytesToWrite, EEPROM_address);
         SerialUSB.write(1);
       } break; 
     case 85: {
-        while (SerialUSB.available() == 0) {}
-        inByte2 = SerialUSB.read();
+        inByte2 = SerialReadByte();
         EEPROM_address = inByte2;
-        while (SerialUSB.available() == 0) {}
-        nBytesToRead = SerialUSB.read();
+        nBytesToRead = SerialReadByte();
         for (int i = 0; i < nBytesToRead; i++) {
          EEPROM_OutputValue = ReadEEPROM(EEPROM_address+i);
          SerialUSB.write(EEPROM_OutputValue);
@@ -490,24 +480,20 @@ void loop() {
       } break;
       
       case 86: { // Override IO Lines
-        while (SerialUSB.available() == 0) {}
-        inByte2 = SerialUSB.read();
-        while (SerialUSB.available() == 0) {}
-        inByte3 = SerialUSB.read();
+        inByte2 = SerialReadByte();
+        inByte3 = SerialReadByte();
         pinMode(inByte2, OUTPUT); digitalWrite(inByte2, inByte3);
       } break; 
       
       case 87: { // Direct Read IO Lines
-        while (SerialUSB.available() == 0) {}
-        inByte2 = SerialUSB.read();
+        inByte2 = SerialReadByte();
         pinMode(inByte2, INPUT);
         delayMicroseconds(10);
         LogicLevel = digitalRead(inByte2);
         SerialUSB.write(LogicLevel);
       } break; 
       case 88: { // Direct Read IO Lines as analog
-        while (SerialUSB.available() == 0) {}
-        inByte2 = SerialUSB.read();
+        inByte2 = SerialReadByte();
         pinMode(inByte2, INPUT_ANALOG);
         delay(10);
         SensorValue = analogRead(inByte2);
@@ -516,8 +502,7 @@ void loop() {
       } break;
       case 89: { // Receive new CommanderString (displayed on top line of OLED, i.e. "MATLAB connected"
         for (int x = 0; x < 6; x++) {
-          while (SerialUSB.available() == 0) {}
-          CommanderString[x] = SerialUSB.read();
+          CommanderString[x] = SerialReadByte();
         }
         for (int x = 6; x < 16; x++) {
           CommanderString[x] = ClientStringSuffix[x-6];
@@ -857,14 +842,10 @@ void loop() {
 unsigned long SerialReadLong() {
    // Generic routine for getting a 4-byte long int over the serial port
    unsigned long OutputLong = 0;
-        while (SerialUSB.available() == 0) {}
-          inByte = SerialUSB.read();
-        while (SerialUSB.available() == 0) {}
-          inByte2 = SerialUSB.read();
-        while (SerialUSB.available() == 0) {}
-          inByte3 = SerialUSB.read();
-        while (SerialUSB.available() == 0) {}
-          inByte4 = SerialUSB.read();
+          inByte = SerialReadByte();
+          inByte2 = SerialReadByte();
+          inByte3 = SerialReadByte();
+          inByte4 = SerialReadByte();
           OutputLong =  makeLong(inByte4, inByte3, inByte2, inByte);
   return OutputLong;
 }
@@ -1769,4 +1750,52 @@ void LoadDefaultParameters() {
       WriteEEPROMPage(PageBytes, 32, EEPROM_address);
       EEPROM_address = EEPROM_address + 32;
     }
+}
+
+byte SerialReadByte(){
+  byte ReturnByte = 0;
+  if (SerialReadTimedout == 0) {
+    SerialReadStartTime = millis();
+    while (SerialUSB.available() == 0) {
+        SerialCurrentTime = millis();
+        if ((SerialCurrentTime - SerialReadStartTime) > Timeout) {
+          SerialReadTimedout = 1;
+          return 0;
+        }
+    }
+    ReturnByte = SerialUSB.read();
+    return ReturnByte;
+  } else {
+    return 0;
+  }
+}
+
+void HandleReadTimeout() {
+  byte FlashState = 0;
+  write2Screen("COMM. FAILURE!","Click joystick->");
+  ClickerButtonState = 1;
+  SerialReadStartTime = millis(); // Reused Serial time vars to conserve memory
+  while (ClickerButtonState == 1) {
+    ClickerButtonState = digitalRead(ClickerButtonLine);
+    SerialCurrentTime = millis();
+    if ((SerialCurrentTime - SerialReadStartTime) > 100) { // Time to flash
+      if (FlashState == 0) {
+        gpio_write_bit(INPUT_PIN_PORT, InputLEDLineBits[0], LOW);
+        gpio_write_bit(INPUT_PIN_PORT, InputLEDLineBits[1], LOW);
+        FlashState = 1;
+        SerialReadStartTime = millis();
+      } else {
+        gpio_write_bit(INPUT_PIN_PORT, InputLEDLineBits[0], HIGH);
+        gpio_write_bit(INPUT_PIN_PORT, InputLEDLineBits[1], HIGH);
+        FlashState = 0;
+        SerialReadStartTime = millis();
+      }
+    }
+  }
+  gpio_write_bit(INPUT_PIN_PORT, InputLEDLineBits[0], LOW);
+  gpio_write_bit(INPUT_PIN_PORT, InputLEDLineBits[1], LOW);
+  write2Screen("Loading default","parameters...");
+  LoadDefaultParameters();
+  delay(2000);
+  write2Screen(CommanderString," Click for menu");
 }
