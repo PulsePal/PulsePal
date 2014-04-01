@@ -128,7 +128,7 @@
 <wire x1="0" y1="111.43" x2="0" y2="32.258" width="0" layer="20"/>
 <wire x1="0" y1="32.258" x2="99.04" y2="32.258" width="0" layer="20"/>
 <wire x1="99.04" y1="32.258" x2="99.04" y2="111.43" width="0" layer="20"/>
-<text x="34.29" y="33.782" size="1.778" layer="21" font="vector">r0.4</text>
+<text x="35.306" y="34.036" size="1.778" layer="21" font="vector">r0.4</text>
 <text x="14.224" y="109.982" size="1.016" layer="21" font="vector">oLED Display i/o</text>
 <text x="2.794" y="48.006" size="1.27" layer="21" font="vector">Input Ch1</text>
 <text x="19.05" y="48.006" size="1.27" layer="21" font="vector">Input Ch2</text>
@@ -138,7 +138,7 @@
 <text x="86.106" y="48.006" size="1.27" layer="21" font="vector">Output Ch4</text>
 <text x="53.848" y="76.708" size="1.27" layer="21" font="vector" rot="R90">DAC</text>
 <text x="66.802" y="71.628" size="1.27" layer="21" font="vector" rot="R270">OP AMP</text>
-<text x="7.874" y="33.782" size="3.048" layer="21" font="vector">PULSE PAL</text>
+<text x="6.858" y="33.782" size="3.302" layer="21" font="vector">PULSE PAL</text>
 <text x="4.826" y="58.928" size="1.778" layer="21" rot="MR0">+</text>
 <text x="21.082" y="58.928" size="1.778" layer="21" rot="MR0">+</text>
 <text x="40.894" y="58.674" size="1.778" layer="21" rot="MR0">+</text>
@@ -1438,7 +1438,8 @@ design rules under a new name.</description>
 <wire x1="61.976" y1="75.438" x2="61.976" y2="76.454" width="0.254" layer="1"/>
 <wire x1="61.976" y1="76.454" x2="62.23" y2="76.708" width="0.254" layer="1"/>
 <wire x1="62.23" y1="76.708" x2="68.326" y2="82.804" width="0.254" layer="1"/>
-<wire x1="90.17" y1="82.804" x2="89.662" y2="76.2" width="0" layer="19" extent="1-1"/>
+<wire x1="90.17" y1="82.804" x2="93.472" y2="82.804" width="0.254" layer="1"/>
+<wire x1="93.472" y1="82.804" x2="93.472" y2="76.2" width="0.254" layer="1"/>
 </signal>
 <signal name="N$24">
 <contactref element="MAX500" pad="2"/>
