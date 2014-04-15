@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-// PULSE PAL v0.3 firmware 
+// PULSE PAL v0.4 firmware 
 // Josh Sanders, March 2012
 
 #include <LiquidCrystal.h>
@@ -49,7 +49,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 // Trigger line level configuration (0 = default high, trigger low (versions with optocoupler). 1 = default low, trigger high.)
 #define TriggerLevel 0
-#define ClickButtonHighLevel 1
 
 
 // Firmware build number
@@ -122,6 +121,7 @@ int LastClickerXState = 0; // 0 for neutral, 1 for left, 2 for right.
 int inMenu = 0; // Menu id: 0 for top, 1 for channel menu, 2 for action menu
 int SelectedChannel = 0;
 int SelectedAction = 1;
+byte SelectedInputAction = 1;
 int SelectedStimMode = 1;
 boolean NeedUpdate = 0; // If a new menu item is selected, the screen must be updated
 boolean SerialReadTimedout = 0; // Goes to 1 if a serial read timed out, causing all subsequent serial reads to skip until next main loop iteration.
@@ -169,7 +169,7 @@ byte DACBuffer3[2] = {3};
 // Other variables
 char Value2Display[18] = {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '\0'};
 int lastDebounceTime = 0; // to debounce the joystick button
-boolean lastButtonState = 0;
+boolean lastButtonState = 1;
 boolean ChoiceMade = 0; // determines whether user has chosen a value from a list
 unsigned int UserValue = 0; // The current value displayed on a list of values (written to LCD when choosing parameters)
 char CommanderString[16] = " PULSE PAL v0.3";
@@ -260,7 +260,7 @@ void loop() {
         // Write to DACs
       dacWrite(DACValues);
        ClickerButtonState = digitalRead(ClickerButtonLine);
-     if (ClickerButtonState == ClickButtonHighLevel){    // A button click ends ongoing stimulation on all channels.
+     if (ClickerButtonState == HIGH){    // A button click ends ongoing stimulation on all channels.
        for (int x = 0; x < 4; x++) {
           StimulusStatus[x] = 0;
           PulseStatus[x] = 0;
@@ -939,12 +939,20 @@ void UpdateSettingsMenu(int inByte) {
                 case 1: {write2Screen("MATLAB Connected"," Click for menu");} break;
               }
             } break;
-            
-          // These two are to prevent entering the input menus until they are programmed
-          case 6: {} break;
-          case 5:{} break;
+          case 5:{
+            inMenu = 4; // trigger menu
+            SelectedInputAction = 1;
+            SelectedChannel = 1;
+            write2Screen("< Trigger Now  >"," ");
+          } break;  
+          case 6: {
+            inMenu = 4; // trigger menu
+            SelectedInputAction = 1;
+            SelectedChannel = 2;
+            write2Screen("< Trigger Now  >"," ");
+          } break;
           default: {
-            inMenu = 2;
+            inMenu = 2; // output menu
             SelectedAction = 1;
             write2Screen("< Trigger Now  >"," ");
           } break;
@@ -1059,6 +1067,44 @@ void UpdateSettingsMenu(int inByte) {
           } break;
          }
        } break; 
+       case 4: {
+        switch (SelectedInputAction) {
+          case 1: {
+            // Trigger linked output channels
+            write2Screen("< Trigger Now >","      ZAP!");
+            delay(100);
+            while (ClickerButtonState == 1) {
+             ClickerButtonState = ReadDebouncedButton();
+            }
+            write2Screen("< Trigger Now >"," ");
+            for (int x = 0; x < 4; x++) {
+              if (TriggerAddress[SelectedChannel-1][x] == 1) {
+                PreStimulusStatus[x] = 1;
+                BurstStatus[x] = 1;
+                PrePulseTrainTimestamps[x] = SystemTime;
+              }
+            }
+          } break;
+          case 2: {
+            // Change mode of selected channel
+            TriggerMode[SelectedChannel-1] = ReturnUserValue(0, 2, 1, 5); // Get user to input trigger mode
+            //Store changes
+            EEPROM_address = 32;
+            for (int x = 0; x < 4; x++) {
+              PrepareOutputChannelMemoryPage2(x);
+              WriteEEPROMPage(PageBytes, 32, EEPROM_address);
+              EEPROM_address = EEPROM_address + 64;
+            }
+          } break;
+          case 3: {
+            inMenu = 1;
+            SelectedAction = 1;
+            write2Screen("Output Channels","<  Channel 1  >");
+            NeedUpdate = 1;
+            SelectedChannel = SelectedChannel + 4;
+          } break;
+        }
+      } break;
     }
     }
     if (ClickerButtonState == 0 && LastClickerButtonState == 1) {
@@ -1076,6 +1122,8 @@ void UpdateSettingsMenu(int inByte) {
         }
       }
       if (inMenu == 3) {SelectedStimMode = SelectedStimMode - 1;}
+      if (inMenu == 4) {SelectedInputAction = SelectedInputAction - 1;}
+      if (SelectedInputAction == 0) {SelectedInputAction = 3;}
       if (SelectedChannel == 0) {SelectedChannel = 8;}
       if (SelectedAction == 0) {SelectedAction = 17;}
       if (SelectedStimMode == 0) {SelectedStimMode = 4;}
@@ -1092,6 +1140,8 @@ void UpdateSettingsMenu(int inByte) {
         }
       }
       if (inMenu == 3) {SelectedStimMode = SelectedStimMode + 1;}
+      if (inMenu == 4) {SelectedInputAction = SelectedInputAction + 1;}
+      if (SelectedInputAction == 4) {SelectedInputAction = 1;}
       if (SelectedChannel == 9) {SelectedChannel = 1;}
       if (SelectedAction == 18) {SelectedAction = 1;}
       if (SelectedStimMode == 5) {SelectedStimMode = 1;}
@@ -1100,26 +1150,33 @@ void UpdateSettingsMenu(int inByte) {
       LastClickerXState = 0;
     }
     if (NeedUpdate == 1) {
-      if (inMenu == 1) {
-        RefreshChannelMenu(SelectedChannel);
-      } else if (inMenu == 2) {
-        RefreshActionMenu(SelectedAction);
-      } else if (inMenu == 3) {
-        switch (SelectedStimMode) {
-          case 1: {write2Screen("< Single Train >", " ");} break;
-          case 2: {write2Screen("< Single Pulse >", " ");} break;
-          case 3: {
-          if (ContinuousLoopMode[SelectedChannel-1] == false) {
-               write2Screen("<  Continuous  >","      Off");
-             } else {
-               write2Screen("<  Continuous  >","      On");
-             }
+      switch (inMenu) {
+        case 1: {
+          RefreshChannelMenu(SelectedChannel);
         } break;
-          case 4: {write2Screen("<     Exit     >"," ");} break;
-        }
-      }
-      NeedUpdate = 0;
+        case 2: {
+          RefreshActionMenu(SelectedAction);
+        } break; 
+        case 3: {
+          switch (SelectedStimMode) {
+            case 1: {write2Screen("< Single Train >", " ");} break;
+            case 2: {write2Screen("< Single Pulse >", " ");} break;
+            case 3: {
+            if (ContinuousLoopMode[SelectedChannel-1] == false) {
+                 write2Screen("<  Continuous  >","      Off");
+               } else {
+                 write2Screen("<  Continuous  >","      On");
+               }
+            } break;
+            case 4: {write2Screen("<     Exit     >"," ");} break;
+          }
+        } break;
+        case 4: {
+          RefreshTriggerMenu(SelectedInputAction); 
+        } break;
     }
+    NeedUpdate = 0;
+  }
 }
 void RefreshChannelMenu(int ThisChannel) {
   switch (SelectedChannel) {
@@ -1152,6 +1209,13 @@ void RefreshActionMenu(int ThisAction) {
           case 15: {write2Screen("<Custom Train# >",FormatNumberForDisplay(CustomTrainID[SelectedChannel-1], 0));} break;
           case 16: {write2Screen("<Custom Target >",FormatNumberForDisplay(CustomTrainTarget[SelectedChannel-1], 4));} break;
           case 17: {write2Screen("<     Exit     >"," ");} break;
+     }
+}
+void RefreshTriggerMenu(int ThisAction) {
+    switch (SelectedInputAction) {
+          case 1: {write2Screen("< Trigger Now  >"," ");} break;
+          case 2: {write2Screen("< Trigger Mode >",FormatNumberForDisplay(TriggerMode[SelectedChannel-1], 5));} break;
+          case 3: {write2Screen("<     Exit     >"," ");} break;
      }
 }
 
@@ -1226,7 +1290,18 @@ if (Units == 2) {
       } else if (InputNum == 1) {
         sprintf(Value2Display, "     Bursts");
       } else {
-        sprintf(Value2Display, "Error");
+        sprintf(Value2Display, "     Error");
+      }
+    } break;
+    case 5: {
+      if (InputNum == 0) {
+        sprintf(Value2Display, "     Normal   ");
+      } else if (InputNum == 1) {
+        sprintf(Value2Display, "     Toggle   ");
+      } else if (InputNum == 2) {
+        sprintf(Value2Display, "  Pulse Gated  ");
+      } else {
+        sprintf(Value2Display, "     Error   ");
       }
     } break;
   }
@@ -1238,7 +1313,7 @@ boolean ReadDebouncedButton() {
   //ClickerButtonState = gpio_read_bit(INPUT_PIN_PORT, ClickerButtonBit);
     if (ClickerButtonState != lastButtonState) {lastDebounceTime = SystemTime;}
     lastButtonState = ClickerButtonState;
-   if (((SystemTime - lastDebounceTime) > 75000) && (ClickerButtonState == ClickButtonHighLevel)) {
+   if (((SystemTime - lastDebounceTime) > 75000) && (ClickerButtonState == HIGH)) {
       return 1;
    } else {
      return 0;
@@ -1265,6 +1340,9 @@ unsigned int ReturnUserValue(unsigned int LowerLimit, unsigned int UpperLimit, u
        case 14:{UserValue = TriggerAddress[1][SelectedChannel-1];} break;
        case 15:{UserValue = CustomTrainID[SelectedChannel-1];} break;
        case 16:{UserValue = CustomTrainTarget[SelectedChannel-1];} break;       
+     }
+     if (Units == 5) {
+       UserValue = TriggerMode[SelectedChannel-1];
      }
      inMenu = 3; // Temporarily goes a menu layer deeper so leading zeros are displayed by FormatNumberForDisplay
      lcd.setCursor(0, 1); lcd.print("                ");
@@ -1307,6 +1385,7 @@ unsigned int ReturnUserValue(unsigned int LowerLimit, unsigned int UpperLimit, u
        case 2: {ValidCursorPositions[0] = 0; ValidCursorPositions[1] = 1; ValidCursorPositions[2] = 2;} break;
        case 3: {ValidCursorPositions[0] = 7;} break;
        case 4: {ValidCursorPositions[0] = 7;} break;
+       case 5: {ValidCursorPositions[0] = 7;} break;
      }
      // Initialize cursor starting positions and limits by unit type
      switch (Units) {
@@ -1315,6 +1394,7 @@ unsigned int ReturnUserValue(unsigned int LowerLimit, unsigned int UpperLimit, u
        case 2: {CursorPos = 2; CursorPosLeftLimit = 0; CursorPosRightLimit = 2;} break; // Format for volts
        case 3: {CursorPos = 0; CursorPosLeftLimit = 0; CursorPosRightLimit = 0;} break; // Format for Off/On
        case 4: {CursorPos = 0; CursorPosLeftLimit = 0; CursorPosRightLimit = 0;} break; // Format for Pulses/Bursts
+       case 5: {CursorPos = 0; CursorPosLeftLimit = 0; CursorPosRightLimit = 0;} break; // Format for trigger mode
        }
      unsigned int CursorToggleTime = micros();
      unsigned int CursorToggleInterval = 300000; // Cursor toggle interval in microseconds
@@ -1370,12 +1450,7 @@ unsigned int ReturnUserValue(unsigned int LowerLimit, unsigned int UpperLimit, u
                     }
                 } 
             } break;
-            case 3: {
-              if (UserValue < UpperLimit) {
-                UserValue = UserValue + 1;
-              }
-            } break;
-            case 4: {
+            default: {
               if (UserValue < UpperLimit) {
                 UserValue = UserValue + 1;
               }
@@ -1424,12 +1499,7 @@ unsigned int ReturnUserValue(unsigned int LowerLimit, unsigned int UpperLimit, u
                     }
                 } 
             } break;
-            case 3: {
-              if (UserValue > LowerLimit) {
-                UserValue = UserValue - 1;
-              }
-            } break;
-            case 4: {
+            default: {
               if (UserValue > LowerLimit) {
                 UserValue = UserValue - 1;
               }
@@ -1463,7 +1533,11 @@ unsigned int ReturnUserValue(unsigned int LowerLimit, unsigned int UpperLimit, u
             }
      lcd.noCursor();
      lcd.setCursor(0, 1); lcd.print("                ");
-     inMenu = 2;
+     if (Units == 5) {
+       inMenu = 4;
+     } else {
+       inMenu = 2;
+     }
      delay(100);
      lcd.setCursor(0, 1); lcd.print(FormatNumberForDisplay(UserValue, Units));
      //lcd.noCursor();
@@ -1524,21 +1598,20 @@ void PrepareOutputChannelMemoryPage2(byte ChannelNum) {
   PageBytes[1] = Phase1Voltage[ChannelNum];
   // PageBytes[2] reserved for >8-bit DAC upgrade 
   PageBytes[3] = Phase2Voltage[ChannelNum];
-  // PageBytes[3] reserved for >8-bit DAC upgrade
-  PageBytes[4] = CustomTrainID[ChannelNum];
-  PageBytes[5] = CustomTrainTarget[ChannelNum];
-  PageBytes[6] = TriggerAddress[0][0]; // To be used in future...
-  PageBytes[7] = TriggerAddress[0][1];
-  PageBytes[8] = TriggerAddress[0][2];
-  PageBytes[9] = TriggerAddress[0][3];
-  PageBytes[10] = TriggerAddress[1][0];
-  PageBytes[11] = TriggerAddress[1][1];
-  PageBytes[12] = TriggerAddress[1][2];
-  PageBytes[13] = TriggerAddress[1][3];
-  PageBytes[14] = CustomTrainLoop[ChannelNum];
-  PageBytes[15] = 0;
-  PageBytes[16] = 0;
-  PageBytes[17] = 0;
+  // PageBytes[4] reserved for >8-bit DAC upgrade
+  PageBytes[5] = CustomTrainID[ChannelNum];
+  PageBytes[6] = CustomTrainTarget[ChannelNum];
+  PageBytes[7] = CustomTrainLoop[ChannelNum];
+  PageBytes[8] = TriggerAddress[0][0]; // To be used in future...
+  PageBytes[9] = TriggerAddress[0][1];
+  PageBytes[10] = TriggerAddress[0][2];
+  PageBytes[11] = TriggerAddress[0][3];
+  PageBytes[12] = TriggerAddress[1][0];
+  PageBytes[13] = TriggerAddress[1][1];
+  PageBytes[14] = TriggerAddress[1][2];
+  PageBytes[15] = TriggerAddress[1][3];
+  PageBytes[16] = TriggerMode[0];
+  PageBytes[17] = TriggerMode[1];
   PageBytes[18] = 0;
   PageBytes[19] = 0;
   PageBytes[20] = 0;
@@ -1590,17 +1663,19 @@ void RestoreParametersFromEEPROM() {
     IsBiphasic[Chan] = PageBytes[0];
     Phase1Voltage[Chan] = PageBytes[1];
     Phase2Voltage[Chan] = PageBytes[3];
-    CustomTrainID[Chan] = PageBytes[4];
-    CustomTrainTarget[Chan] = PageBytes[5];
-    TriggerAddress[0][0] = PageBytes[6]; // This is stored on every channel and over-written 4 times for programming convenience 
-    TriggerAddress[0][1] = PageBytes[7];
-    TriggerAddress[0][2] = PageBytes[8];
-    TriggerAddress[0][3] = PageBytes[9];
-    TriggerAddress[1][0] = PageBytes[10];
-    TriggerAddress[1][1] = PageBytes[11];
-    TriggerAddress[1][2] = PageBytes[12];
-    TriggerAddress[1][3] = PageBytes[13];
-    CustomTrainLoop[Chan] = PageBytes[14];
+    CustomTrainID[Chan] = PageBytes[5];
+    CustomTrainTarget[Chan] = PageBytes[6];
+    CustomTrainLoop[Chan] = PageBytes[7];
+    TriggerAddress[0][0] = PageBytes[8]; // TriggerAddress and TriggerMode are stored on every channel and over-written 4 times for programming convenience 
+    TriggerAddress[0][1] = PageBytes[9];
+    TriggerAddress[0][2] = PageBytes[10];
+    TriggerAddress[0][3] = PageBytes[11];
+    TriggerAddress[1][0] = PageBytes[12];
+    TriggerAddress[1][1] = PageBytes[13];
+    TriggerAddress[1][2] = PageBytes[14];
+    TriggerAddress[1][3] = PageBytes[15];
+    TriggerMode[0] = PageBytes[16];
+    TriggerMode[1] = PageBytes[17];
   }
   ValidEEPROMProgram = PageBytes[31];
 }
@@ -1796,7 +1871,7 @@ byte SerialReadByte(){
 void HandleReadTimeout() {
   byte FlashState = 0;
   write2Screen("COMM. FAILURE!","Click joystick->");
-  ClickerButtonState = 0;
+  ClickerButtonState = 1;
   SerialReadStartTime = millis(); // Reused Serial time vars to conserve memory
   while (ClickerButtonState == 0) {
     ClickerButtonState = digitalRead(ClickerButtonLine);
