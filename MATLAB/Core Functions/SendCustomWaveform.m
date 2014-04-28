@@ -26,9 +26,9 @@ function ConfirmBit = SendCustomWaveform(TrainID, SamplingPeriod, Voltages)
 % NOTE: Be sure to adjust the pulse duration on any channels using this train to match the SamplingPeriod argument!
 global PulsePalSystem;
 OriginalSamplingPeriod = SamplingPeriod;
-SamplingPeriod = SamplingPeriod*1000000;
+SamplingPeriod = SamplingPeriod*10000; % Convert to multiple of 100us
 
-if rem(SamplingPeriod, PulsePalSystem.CycleDuration) > 0
+if rem(SamplingPeriod, 1) > 0
     error(['Error: sampling period must be a multiple of ' num2str(PulsePalSystem.CycleDuration) ' microseconds'])
 end
 Timestamps = 0:SamplingPeriod:((length(Voltages)*SamplingPeriod)-1);

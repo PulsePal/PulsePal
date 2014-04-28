@@ -36,15 +36,12 @@ CandidateVoltages = Voltages;
 if (sum(CandidateTimes < 0) > 0)  
     error('Error: Custom pulse times must be positive');
 end
-if (length(unique(CandidateTimes)) ~= length(CandidateTimes))
-    error('Error: Duplicate custom pulse times detected');
-end
 if ~IsTimeSequence(CandidateTimes)  
     error('Error: Custom pulse times must always increase');
 end
-% if (sum(rem(CandidateTimes,PulsePalSystem.CycleDuration)) > 0)  
-%     errordlg(['Non-zero time values for Pulse Pal rev0.4 must be multiples of ' num2str(PulsePalSystem.CycleDuration) ' microseconds.'], 'Error');
-% end
+if (sum(rem(CandidateTimes,1) > 0))  
+    errordlg(['Non-zero time values for Pulse Pal rev0.4 must be multiples of ' num2str(PulsePalSystem.CycleDuration) ' microseconds.'], 'Error');
+end
 if (CandidateTimes(length(CandidateTimes)) > 3600000000) 
     0; error('Error: Custom pulse times must be < 3600 s');
 end
@@ -54,8 +51,10 @@ end
 if (length(CandidateVoltages) ~= length(CandidateTimes)) 
     error('Error: There must be a voltage for every timestamp');
 end
-
-Output = uint32(PulseTimes*1000000);
+Output = uint32(PulseTimes*10000); % Convert to multiple of 100us
+if (length(unique(Output)) ~= length(Output))
+    error('Error: Duplicate custom pulse times detected');
+end
 Voltages = Voltages + 10;
 Voltages = Voltages / 20;
 VoltageOutput = uint8(Voltages*255);

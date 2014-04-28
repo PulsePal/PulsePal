@@ -97,10 +97,10 @@ global PulsePalSystem;
     
     
     % Convert time data to microseconds
-    TimeData = uint32(cell2mat(ProgramMatrix(5:12, 2:5))*1000000);
+    TimeData = uint32(cell2mat(ProgramMatrix(5:12, 2:5))*10000); % Convert to multiple of 100us
     
     % Ensure time data is within range
-    if sum(sum(rem(TimeData, PulsePalSystem.CycleDuration))) > 0
+    if sum(sum(rem(TimeData, 1))) > 0
         errordlg(['Non-zero time values for Pulse Pal rev0.4 must be multiples of ' num2str(PulsePalSystem.CycleDuration) ' microseconds. Please check your program matrix.'], 'Invalid program');
     end
     

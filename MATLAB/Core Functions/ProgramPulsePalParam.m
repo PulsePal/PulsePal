@@ -28,14 +28,14 @@ function ConfirmBit = ProgramPulsePalParam(Channel, ParamCode, ParamValue)
 %     voltage when calling this function. Conversion to bytes will be
 %     performed.
 % 3 = Phase2Voltage (8 bit unsigned int, 0-255 = -10V-10V)
-% 4 = Phase1Duration (32 bit unsigned int, 50us-3600s) NOTE: Call this function with all times in seconds
-% 5 = InterPhaseInterval (32 bit unsigned int, 50us-3600s)
-% 6 = Phase2Duration (32 bit unsigned int, 50us-3600s)
-% 7 = InterPulseInterval (32 bit unsigned int, 50us-3600s)
+% 4 = Phase1Duration (32 bit unsigned int, 100us-3600s) NOTE: Call this function with all times in seconds
+% 5 = InterPhaseInterval (32 bit unsigned int, 100us-3600s)
+% 6 = Phase2Duration (32 bit unsigned int, 100us-3600s)
+% 7 = InterPulseInterval (32 bit unsigned int, 100us-3600s)
 % 8 = BurstDuration (32 bit unsigned int, 0us-3600s)
 % 9 = BurstInterval (32 bit unsigned int, 0us-3600s)
-% 10 = PulseTrainDuration (32 bit unsigned int, 50us-3600s)
-% 11 = PulseTrainDelay (32 bit unsigned int, 50us-3600s)
+% 10 = PulseTrainDuration (32 bit unsigned int, 100us-3600s)
+% 11 = PulseTrainDelay (32 bit unsigned int, 100us-3600s)
 % 12 = LinkedToTriggerCH1 (8 bit unsigned int, 0-1)
 % 13 = LinkedToTriggerCH2 (8 bit unsigned int, 0-1)
 % 14 = CustomTrainID (8 bit unsigned int, 0-2)
@@ -83,8 +83,8 @@ end
 
 % Sanity-check time data
 if isTimeData
-    ParamValue = round(ParamValue*1000000);
-    if rem(ParamValue, PulsePalSystem.CycleDuration) > 0
+    ParamValue = round(ParamValue*10000); % Convert to multiple of 100us
+    if rem(ParamValue, 1) > 0
         errordlg(['Non-zero time values for Pulse Pal rev0.4 must be multiples of ' num2str(PulsePalSystem.CycleDuration) ' microseconds.'], 'Error');
     end
 end
