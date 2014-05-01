@@ -42,6 +42,7 @@ catch
         PulsePalSystem.SerialPort = [];
         PulsePalSystem.PulsePalPath = which('PulsePal');
         PulsePalSystem.PulsePalPath = PulsePalSystem.PulsePalPath(1:(length(PulsePalSystem.PulsePalPath)-10));
+        PulsePalSystem.OS = system_dependent('getos');
     end
 end
 

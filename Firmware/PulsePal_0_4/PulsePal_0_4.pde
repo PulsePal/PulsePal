@@ -128,7 +128,7 @@ boolean NeedUpdate = 0; // If a new menu item is selected, the screen must be up
 boolean SerialReadTimedout = 0; // Goes to 1 if a serial read timed out, causing all subsequent serial reads to skip until next main loop iteration.
 int SerialCurrentTime = 0; // Current time (millis) for serial read timeout
 int SerialReadStartTime = 0; // Time the serial read was started
-byte Timeout = 200; // Times out after 200ms
+int Timeout = 500; // Times out after 500ms
 
 // Variables used in stimulus playback
 byte inByte; byte inByte2; byte inByte3; byte inByte4; byte CommandByte;
@@ -334,7 +334,6 @@ void loop() {
 
       // Program custom stimulus 1
       case 75: {
-        digitalWrite(LEDLine, HIGH); //
         USBPacketCorrectionByte = SerialReadByte();
         CustomTrainNpulses[0] = SerialReadLong();
         for (int x = 0; x < CustomTrainNpulses[0]; x++) {
@@ -348,11 +347,9 @@ void loop() {
           CustomTrainNpulses[0] = CustomTrainNpulses[0]  - 1;
         }
         SerialUSB.write(1); // Send confirm byte
-        digitalWrite(LEDLine, LOW); //
       } break;
       // Program custom stimulus 2
       case 76: {
-        digitalWrite(LEDLine, HIGH); //
         USBPacketCorrectionByte = SerialReadByte();
         CustomTrainNpulses[1] = SerialReadLong();
         for (int x = 0; x < CustomTrainNpulses[1]; x++) {
@@ -366,7 +363,6 @@ void loop() {
           CustomTrainNpulses[1] = CustomTrainNpulses[1]  - 1;
         }
         SerialUSB.write(1); // Send confirm byte
-        digitalWrite(LEDLine, LOW); //
       } break;      
       // Soft-trigger the module
       case 77: {

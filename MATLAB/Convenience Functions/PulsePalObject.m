@@ -24,6 +24,7 @@ classdef PulsePalObject < handle
         GUIHandles
         Graphics
         FirmwareVersion
+        OS
         CycleDuration
         CurrentProgram
         PulsePalPath

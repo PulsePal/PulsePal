@@ -89,15 +89,17 @@ if isTimeData
     end
 end
 
-% Instruct PulsePal to recieve a new single parameter (op code 79) and specify parameter and target channel
-fwrite(PulsePalSystem.SerialPort, [char(74) char(ParamCode) char(Channel)]);
 
-% Send data
+% Format data to bytes
 if isTimeData
-    fwrite(PulsePalSystem.SerialPort, ParamValue, 'uint32');
+    ParamBytes = typecast(uint32(ParamValue), 'uint8');
 else
-    fwrite(PulsePalSystem.SerialPort, ParamValue, 'uint8');
+    ParamBytes = ParamValue;
 end
+
+% Assemble byte string instructing PulsePal to recieve a new single parameter (op code 74) and specify parameter and target channel before data
+Bytestring = [74 ParamCode Channel ParamBytes];
+fwrite(PulsePalSystem.SerialPort, Bytestring, 'uint8');
 ConfirmBit = fread(PulsePalSystem.SerialPort, 1);
 if ConfirmBit == 1
     PulsePalSystem.CurrentProgram{ParamCode+1,Channel+1} = OriginalValue;

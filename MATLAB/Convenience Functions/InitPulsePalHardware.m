@@ -22,7 +22,7 @@ function InitPulsePalHardware(varargin)
 
 global PulsePalSystem
 disp('Searching for Pulse Pal. Please wait.')
-
+BaudRate = 9600; % Setting this to higher baud rate on mac causes crashes, but on all platforms it is effectively ignored - actual transmission proceeds at ~1MB/s
 if nargin == 1
     Ports = {upper(varargin{1})};
 else
@@ -62,7 +62,7 @@ x = 0;
 while (Found == 0) && (x < length(Ports))
     x = x + 1;
     disp(['Trying port ' Ports{x}])
-    TestSer = serial(Ports{x}, 'BaudRate', 115200, 'Timeout', 1,'OutputBufferSize', 8000, 'InputBufferSize', 8000, 'DataTerminalReady', 'off', 'tag', 'PulsePal');
+    TestSer = serial(Ports{x}, 'BaudRate', BaudRate, 'Timeout', 1,'OutputBufferSize', 100000, 'InputBufferSize', 1000, 'DataTerminalReady', 'off', 'tag', 'PulsePal');
     AvailablePort = 1;
     try
         fopen(TestSer);
@@ -94,7 +94,7 @@ while (Found == 0) && (x < length(Ports))
     clear TestSer
 end
 if Found ~= 0
-    PulsePalSystem.SerialPort = serial(Ports{Found}, 'BaudRate', 115200, 'Timeout', 1, 'OutputBufferSize', 8000, 'InputBufferSize', 8000, 'DataTerminalReady', 'off', 'tag', 'PulsePal');
+    PulsePalSystem.SerialPort = serial(Ports{Found}, 'BaudRate', BaudRate, 'Timeout', 1, 'OutputBufferSize', 100000, 'InputBufferSize', 1000, 'DataTerminalReady', 'off', 'tag', 'PulsePal');
 else
     error('Error: could not find your Pulse Pal device. Please make sure it is connected and drivers are installed.');
 end
