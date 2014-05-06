@@ -157,7 +157,7 @@ boolean IsBiphasic[4] = {0};
 boolean ContinuousLoopMode[4] = {0}; // If true, the channel loops its programmed stimulus train continuously
 int AnalogValues[2] = {0};
 int SensorValue = 0;
-boolean Stimulating = 0; // true if ANY channel is stimulating. Used to shut down analog reads on joystick, USB com, etc. for increased precision.
+byte StimulatingState = 0; // 1 if ANY channel is stimulating, 2 if this is the first cycle after the system was triggered. 
 boolean WasStimulating = 0; // true if any channel was stimulating on the previous loop. Used to force a DAC write after all channels end their stimulation, to return lines to 0
 int nStimulatingChannels = 0; // number of actively stimulating channels
 boolean DACFlags[4] = {0}; // true if an individual DAC needs to be updated
@@ -237,11 +237,11 @@ void loop() {
     HandleReadTimeout(); // Notifies user of error, then prompts to click and restores DEFAULT channel settings.
     SerialReadTimedout = 0;
   }
-  if (Stimulating == 0) {
+  if (StimulatingState == 0) {
       MicrosTime = micros();
       UpdateSettingsMenu(inByte);
       SystemTime = 0;
-   } else {
+   } else if (StimulatingState == 1) {
      while ((MicrosTime-LastLoopTime) < CycleDuration) {  // Make sure loop runs once every 100us 
          MicrosTime = micros();
       } 
@@ -251,6 +251,11 @@ void loop() {
      if (ClickerButtonState == ClickerButtonLogicHigh){    // A button click ends ongoing stimulation on all channels.
        AbortAllPulseTrains();
      }
+  } else { // First loop after transition Stimulating state, don't waste time enforcing cycle duration or checking button
+     MicrosTime = micros();
+     dacWrite(DACValues); // Update DAC
+     SystemTime++; // Increment system time (# of cycles since stim start)
+     StimulatingState = 1;
   }
   LastLoopTime = MicrosTime;
       
@@ -373,7 +378,7 @@ void loop() {
             if ((CustomTrainID[x] != 0) && (CustomTrainTarget[x] == 1)) {BurstStatus[x] = 0;} else {
                  BurstStatus[x] = 1; 
             }
-          if (Stimulating == 0) {ResetSystemTime();}
+          if (StimulatingState == 0) {ResetSystemTime(); StimulatingState = 2;}
             PrePulseTrainTimestamps[x] = SystemTime;
           }
         }
@@ -558,23 +563,26 @@ void loop() {
       } else {
        // Adjust StimulusStatus to reflect any new trigger events
        if (TriggerAddress[0][x] && (LineTriggerEvent[0] == 1)) {
-         if (Stimulating == 0) {ResetSystemTime();}
+         if (StimulatingState == 0) {ResetSystemTime(); StimulatingState = 2;}
          PreStimulusStatus[x] = 1; BurstStatus[x] = 1; PrePulseTrainTimestamps[x] = SystemTime; PulseStatus[x] = 0; 
        }
        if (TriggerAddress[1][x] && (LineTriggerEvent[1] == 1)) {
-         if (Stimulating == 0) {ResetSystemTime();}
+         if (StimulatingState == 0) {ResetSystemTime(); StimulatingState = 2;}
          PreStimulusStatus[x] = 1; BurstStatus[x] = 1; PrePulseTrainTimestamps[x] = SystemTime; PulseStatus[x] = 0;
        }
       }
     }
-    
-     Stimulating = 0; // null condition, will be overridden in loop if any channels are still stimulating.
+    if (StimulatingState != 2) {
+     StimulatingState = 0; // null condition, will be overridden in loop if any channels are still stimulating.
+    }
     // Check clock and adjust line levels for new time as per programming
     for (int x = 0; x < 4; x++) {
       byte thisTrainID = CustomTrainID[x];
       byte thisTrainIDIndex = thisTrainID-1;
       if (PreStimulusStatus[x] == 1) {
-        Stimulating = 1;
+          if (StimulatingState != 2) {
+           StimulatingState = 1;
+          }
         if (SystemTime == (PrePulseTrainTimestamps[x] + PulseTrainDelay[x])) {
           PreStimulusStatus[x] = 0;
           StimulusStatus[x] = 1;
@@ -601,7 +609,9 @@ void loop() {
         }
       }
       if (StimulusStatus[x] == 1) { // if this output line has been triggered and is delivering a stimulus
-      Stimulating = 1;
+          if (StimulatingState != 2) {
+           StimulatingState = 1; 
+          }
         if (BurstStatus[x] == 1) { // if this output line is currently gated "on"
           switch (PulseStatus[x]) { // depending on the phase of the pulse
            case 0: { // if this is the inter-pulse interval
@@ -831,9 +841,8 @@ void loop() {
             }
           }
         }
-    }
-
-  }
+     }
+   }
 }
 // Convenience Functions
 
@@ -987,7 +996,7 @@ void UpdateSettingsMenu(int inByte) {
             write2Screen("< Single Train >"," ");
             PreStimulusStatus[SelectedChannel-1] = 1;
             BurstStatus[SelectedChannel-1] = 1;
-            if (Stimulating == 0) {ResetSystemTime();}
+            if (StimulatingState == 0) {ResetSystemTime();}
             MicrosTime = micros();
             PrePulseTrainTimestamps[SelectedChannel-1] = SystemTime;  
           } break;
@@ -1085,7 +1094,7 @@ void UpdateSettingsMenu(int inByte) {
               if (TriggerAddress[SelectedChannel-1][x] == 1) {
                 PreStimulusStatus[x] = 1;
                 BurstStatus[x] = 1;
-                if (Stimulating == 0) {Stimulating = 1; ResetSystemTime();}
+                if (StimulatingState == 0) {StimulatingState = 2; ResetSystemTime();}
                 MicrosTime = micros();
                 PrePulseTrainTimestamps[x] = SystemTime;
               }
