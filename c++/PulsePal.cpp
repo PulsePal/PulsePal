@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <stdio.h>
 #include <stdint.h>
+#include <math.h>
 #include "PulsePal.h"
 
 #ifdef _WINDOWS_
@@ -34,8 +35,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 
 #define ZERO_uS (uint32_t) 0
+#define CycleWidth (uint32_t) 10000 // Minimum cycle width in microseconds
 #define FIFTY_uS (uint32_t) 50
-#define MAX_uS (uint32_t) 36000000
+#define MAX_uS (uint32_t) 3600000000
 #define NEWLINE 0xA
 #define RETURN 0xD
 #define makeLong(msb, byte2, byte3, lsb) ((msb << 24) | (byte2 << 16) | (byte3 << 8) | (lsb)) //JS  2/1/2014
@@ -60,6 +62,7 @@ void PulsePal::setDefaultParameters()
         currentOutputParams[i].isBiphasic = 0;
         currentOutputParams[i].phase1Voltage = 5;
         currentOutputParams[i].phase2Voltage = -5;
+		currentOutputParams[i].restingVoltage = 0;
         currentOutputParams[i].phase1Duration = 0.001;
         currentOutputParams[i].interPhaseInterval = 0.001;
         currentOutputParams[i].phase2Duration = 0.001;
@@ -140,9 +143,15 @@ void PulsePal::setPhase2Voltage(uint8_t channel, float voltage)
     PulsePal::currentOutputParams[channel].phase2Voltage = voltage;
 }
 
+void PulsePal::setRestingVoltage(uint8_t channel, float voltage)
+{
+	program(channel, 17, voltageToByte(voltage));
+	PulsePal::currentOutputParams[channel].restingVoltage = voltage;
+}
+
 void PulsePal::setPhase1Duration(uint8_t channel, float timeInSeconds)
 {
-    uint32_t timeInMicroseconds = (uint32_t)(timeInSeconds * 10000); //JS  2/1/2014
+	uint32_t timeInMicroseconds = (uint32_t)(timeInSeconds * CycleWidth); //JS  2/1/2014
     constrain(&timeInMicroseconds, FIFTY_uS, MAX_uS);
     program(channel, 4, timeInMicroseconds);
     PulsePal::currentOutputParams[channel].phase1Duration = timeInSeconds;
@@ -150,7 +159,7 @@ void PulsePal::setPhase1Duration(uint8_t channel, float timeInSeconds)
 
 void PulsePal::setInterPhaseInterval(uint8_t channel, float timeInSeconds)
 {
-    uint32_t timeInMicroseconds = (uint32_t)(timeInSeconds * 10000);
+	uint32_t timeInMicroseconds = (uint32_t)(timeInSeconds * CycleWidth);
     constrain(&timeInMicroseconds, FIFTY_uS, MAX_uS);
     program(channel, 5, timeInMicroseconds);
     PulsePal::currentOutputParams[channel].interPhaseInterval = timeInSeconds;
@@ -158,7 +167,7 @@ void PulsePal::setInterPhaseInterval(uint8_t channel, float timeInSeconds)
 
 void PulsePal::setPhase2Duration(uint8_t channel, float timeInSeconds)
 {
-    uint32_t timeInMicroseconds = (uint32_t)(timeInSeconds * 10000);
+	uint32_t timeInMicroseconds = (uint32_t)(timeInSeconds * CycleWidth);
     constrain(&timeInMicroseconds, FIFTY_uS, MAX_uS);
     program(channel, 6, timeInMicroseconds);
     PulsePal::currentOutputParams[channel].phase2Duration = timeInSeconds;
@@ -166,7 +175,7 @@ void PulsePal::setPhase2Duration(uint8_t channel, float timeInSeconds)
 
 void PulsePal::setInterPulseInterval(uint8_t channel, float timeInSeconds)
 {
-    uint32_t timeInMicroseconds = (uint32_t)(timeInSeconds * 10000);
+	uint32_t timeInMicroseconds = (uint32_t)(timeInSeconds * CycleWidth);
     constrain(&timeInMicroseconds, FIFTY_uS, MAX_uS);
     program(channel, 7, timeInMicroseconds);
     PulsePal::currentOutputParams[channel].interPhaseInterval = timeInSeconds;
@@ -174,7 +183,7 @@ void PulsePal::setInterPulseInterval(uint8_t channel, float timeInSeconds)
 
 void PulsePal::setBurstDuration(uint8_t channel, float timeInSeconds)
 {
-    uint32_t timeInMicroseconds = (uint32_t)(timeInSeconds * 10000);
+	uint32_t timeInMicroseconds = (uint32_t)(timeInSeconds * CycleWidth);
     constrain(&timeInMicroseconds, ZERO_uS, MAX_uS);
     program(channel, 8, timeInMicroseconds);
     PulsePal::currentOutputParams[channel].burstDuration = timeInSeconds;
@@ -182,7 +191,7 @@ void PulsePal::setBurstDuration(uint8_t channel, float timeInSeconds)
 
 void PulsePal::setBurstInterval(uint8_t channel, float timeInSeconds)
 {
-    uint32_t timeInMicroseconds = (uint32_t)(timeInSeconds * 10000);
+	uint32_t timeInMicroseconds = (uint32_t)(timeInSeconds * CycleWidth);
     constrain(&timeInMicroseconds, ZERO_uS, MAX_uS);
     program(channel, 9, timeInMicroseconds);
     PulsePal::currentOutputParams[channel].interBurstInterval = timeInSeconds;
@@ -190,7 +199,7 @@ void PulsePal::setBurstInterval(uint8_t channel, float timeInSeconds)
 
 void PulsePal::setPulseTrainDuration(uint8_t channel, float timeInSeconds)
 {
-    uint32_t timeInMicroseconds = (uint32_t)(timeInSeconds * 10000);
+	uint32_t timeInMicroseconds = (uint32_t)(timeInSeconds * CycleWidth);
     constrain(&timeInMicroseconds, FIFTY_uS, MAX_uS);
     program(channel, 10, timeInMicroseconds);
     PulsePal::currentOutputParams[channel].pulseTrainDuration = timeInSeconds;
@@ -198,7 +207,7 @@ void PulsePal::setPulseTrainDuration(uint8_t channel, float timeInSeconds)
 
 void PulsePal::setPulseTrainDelay(uint8_t channel, float timeInSeconds)
 {
-    uint32_t timeInMicroseconds = (uint32_t)(timeInSeconds * 10000);
+    uint32_t timeInMicroseconds = (uint32_t)(timeInSeconds * 1000000);
     constrain(&timeInMicroseconds, FIFTY_uS, MAX_uS);
     program(channel, 11, timeInMicroseconds);
     PulsePal::currentOutputParams[channel].pulseTrainDelay = timeInSeconds;
@@ -354,10 +363,10 @@ void PulsePal::setContinuousLoop(uint8_t channel, uint8_t state) // JS 1/30/2014
 void PulsePal::constrain(uint32_t* value, uint32_t min, uint32_t max)
 {
 
-    // value must be a multiple of 1
-    if (*value % 1 > 0)
+    // value must be a multiple of 100
+    if (*value % 100 > 0)
     {
-        *value = *value - (*value % 1);
+        *value = *value - (*value % 100);
     }
 
     if (*value < min)
@@ -377,7 +386,7 @@ uint8_t PulsePal::voltageToByte(float voltage)
     // input: -10 to 10 V
     // output: 0-255
 
-    uint8_t output = uint8_t(((voltage+10)/20)*255);
+    uint8_t output = uint8_t(ceil(((voltage+10)/20)*255));
 
     return output;
 
@@ -397,7 +406,7 @@ void PulsePal::sendCustomPulseTrain(uint8_t ID, uint8_t nPulses, float customPul
     int pos = 0;
     unsigned long pulseTimeMicroseconds;
     for (int i = 0; i < nPulses; i++){
-        pulseTimeMicroseconds = (unsigned long)(customPulseTimes[i] * 10000);
+		pulseTimeMicroseconds = (unsigned long)(customPulseTimes[i] * CycleWidth);
         pulseTimeBytes[pos] = (uint8_t)(pulseTimeMicroseconds); pos++;
         pulseTimeBytes[pos] = (uint8_t)(pulseTimeMicroseconds >> 8); pos++;
         pulseTimeBytes[pos] = (uint8_t)(pulseTimeMicroseconds >> 16); pos++;
@@ -426,7 +435,7 @@ void PulsePal::sendCustomPulseTrain(uint8_t ID, uint8_t nPulses, float customPul
 }
 
 void PulsePal::syncAllParams() {
-    uint8_t messageBytes[163] = { 0 };
+    uint8_t messageBytes[167] = { 0 };
     messageBytes[0] = 73;
     int pos = 1;
     uint32_t thisTime = 0;
@@ -435,42 +444,42 @@ void PulsePal::syncAllParams() {
 
     // add time params
     for (int i = 1; i < 5; i++){
-        thisTime = (uint32_t)(currentOutputParams[i].phase1Duration * 10000);
+		thisTime = (uint32_t)(currentOutputParams[i].phase1Duration * CycleWidth);
         messageBytes[pos] = (uint8_t)(thisTime); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 8); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 16); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 24); pos++;
-        thisTime = (uint32_t)(currentOutputParams[i].interPhaseInterval * 10000);
+		thisTime = (uint32_t)(currentOutputParams[i].interPhaseInterval * CycleWidth);
         messageBytes[pos] = (uint8_t)(thisTime); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 8); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 16); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 24); pos++;
-        thisTime = (uint32_t)(currentOutputParams[i].phase2Duration * 10000);
+		thisTime = (uint32_t)(currentOutputParams[i].phase2Duration * CycleWidth);
         messageBytes[pos] = (uint8_t)(thisTime); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 8); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 16); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 24); pos++;
-        thisTime = (uint32_t)(currentOutputParams[i].interPulseInterval * 10000);
+		thisTime = (uint32_t)(currentOutputParams[i].interPulseInterval * CycleWidth);
         messageBytes[pos] = (uint8_t)(thisTime); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 8); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 16); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 24); pos++;
-        thisTime = (uint32_t)(currentOutputParams[i].burstDuration * 10000);
+		thisTime = (uint32_t)(currentOutputParams[i].burstDuration * CycleWidth);
         messageBytes[pos] = (uint8_t)(thisTime); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 8); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 16); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 24); pos++;
-        thisTime = (uint32_t)(currentOutputParams[i].interBurstInterval * 10000);
+		thisTime = (uint32_t)(currentOutputParams[i].interBurstInterval * CycleWidth);
         messageBytes[pos] = (uint8_t)(thisTime); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 8); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 16); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 24); pos++;
-        thisTime = (uint32_t)(currentOutputParams[i].pulseTrainDuration * 10000);
+		thisTime = (uint32_t)(currentOutputParams[i].pulseTrainDuration * CycleWidth);
         messageBytes[pos] = (uint8_t)(thisTime); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 8); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 16); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 24); pos++;
-        thisTime = (uint32_t)(currentOutputParams[i].pulseTrainDelay * 10000);
+		thisTime = (uint32_t)(currentOutputParams[i].pulseTrainDelay * CycleWidth);
         messageBytes[pos] = (uint8_t)(thisTime); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 8); pos++;
         messageBytes[pos] = (uint8_t)(thisTime >> 16); pos++;
@@ -489,6 +498,9 @@ void PulsePal::syncAllParams() {
         messageBytes[pos] = (uint8_t)currentOutputParams[i].customTrainID; pos++;
         messageBytes[pos] = (uint8_t)currentOutputParams[i].customTrainTarget; pos++;
         messageBytes[pos] = (uint8_t)currentOutputParams[i].customTrainLoop; pos++;
+		thisVoltage = PulsePal::currentOutputParams[i].restingVoltage;
+		thisVoltageByte = voltageToByte(thisVoltage);
+		messageBytes[pos] = thisVoltageByte; pos++;
     }
 
     // add trigger channel 1 links
@@ -504,5 +516,5 @@ void PulsePal::syncAllParams() {
         messageBytes[pos] = (uint8_t)currentInputParams[1].triggerMode; pos++;
         messageBytes[pos] = (uint8_t)currentInputParams[2].triggerMode; pos++;
 
-    serial.writeBytes(messageBytes, 163);
+    serial.writeBytes(messageBytes, 167);
 }

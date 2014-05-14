@@ -41,6 +41,7 @@ function ConfirmBit = ProgramPulsePalParam(Channel, ParamCode, ParamValue)
 % 14 = CustomTrainID (8 bit unsigned int, 0-2)
 % 15 = CustomTrainTarget (8 bit unsigned int, 0 = pulses, 1 = bursts)
 % 16 = CustomTrainLoop (8 bit unsigned int, 0 = no, 1 = yes)
+% 17 = RestingVoltage (8 bit unsigned int, 0-255 = -10V-10V)
 % 128 = TriggerMode (1 = normal, 2 = toggle, 3 = gated, FOR TRIGGER CHANNELS ONLY
 
 % For the ParamCode argument, use the number of the parameter (1-16, faster) or optionally, the string
@@ -50,7 +51,7 @@ function ConfirmBit = ProgramPulsePalParam(Channel, ParamCode, ParamValue)
 if ischar(ParamCode)
     ParamCode = strncmpi(ParamCode, {'isbiphasic' 'phase1voltage' 'phase2voltage' 'phase1duration' 'interphaseinterval' 'phase2duration'...
         'interpulseinterval' 'burstduration' 'burstinterval' 'pulsetrainduration' 'pulsetraindelay'...
-        'linkedtotriggerCH1' 'linkedtotriggerCH2' 'customtrainid' 'customtraintarget' 'customtrainloop'}, 7);
+        'linkedtotriggerCH1' 'linkedtotriggerCH2' 'customtrainid' 'customtraintarget' 'customtrainloop' 'restingvoltage'}, 7);
     if sum(ParamCode) == 0
         error('Error: invalid parameter code.')
     end
@@ -77,7 +78,7 @@ else
 end
 
 % Extract voltages for phases 1 and 2
-if (ParamCode == 2) || (ParamCode == 3)
+if (ParamCode == 2) || (ParamCode == 3) || (ParamCode == 17)
     ParamValue = uint8(ceil(((ParamValue+10)/20)*255));
 end
 

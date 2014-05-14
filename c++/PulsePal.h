@@ -51,6 +51,7 @@ public:
     void setBiphasic(uint8_t channel, bool isBiphasic);
     void setPhase1Voltage(uint8_t channel, float voltage);
     void setPhase2Voltage(uint8_t channel, float voltage);
+	void setRestingVoltage(uint8_t channel, float voltage);
     void setPhase1Duration(uint8_t channel, float timeInSeconds);
     void setInterPhaseInterval(uint8_t channel, float timeInSeconds);
     void setPhase2Duration(uint8_t channel, float timeInSeconds);
@@ -99,6 +100,7 @@ public:
         int customTrainID;
         int customTrainTarget;
         int customTrainLoop;
+		float restingVoltage;
     } currentOutputParams[5]; // Use 1-indexing for the channels (output channels 1-4 = currentOutputParams[1]-currentOutputParams[4])
     struct InputParams {
         int triggerMode;

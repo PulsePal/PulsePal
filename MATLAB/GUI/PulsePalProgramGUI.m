@@ -42,7 +42,7 @@ function varargout = PulsePalProgramGUI(varargin)
 
 % Edit the above text to modify the response to help PulsePalProgramGUI
 
-% Last Modified by GUIDE v2.5 18-Jan-2014 05:08:51
+% Last Modified by GUIDE v2.5 13-May-2014 20:21:12
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -707,6 +707,8 @@ if ~isempty(CurrentHandle) % If an element has changed
             Value2Copy = str2double(get(handles.edit27, 'String')); Row2Update = 11; UpdateType = 0;
         case handles.edit28
             Value2Copy = str2double(get(handles.edit28, 'String')); Row2Update = 12; UpdateType = 0;
+        case handles.edit37
+            Value2Copy = str2double(get(handles.edit37, 'String')); Row2Update = 18; UpdateType = 0;
         case handles.popupmenu1
             Value2Copy = (get(handles.popupmenu1, 'Value') - 1); Row2Update = 2; UpdateType = 0;
         case handles.checkbox1
@@ -751,6 +753,7 @@ if length(OutputChannels) == 1 % Otherwise, multiple select mode - do not update
     set(handles.popupmenu3, 'Value', Matrix{16,OutputChannels} + 1);
     set(handles.checkbox1, 'Value', Matrix{13, OutputChannels});
     set(handles.checkbox2, 'Value', Matrix{14, OutputChannels});
+    set(handles.edit30, 'String', num2str(Matrix{4, OutputChannels}));
     set(handles.edit29, 'String', num2str(Matrix{3, OutputChannels}));
     set(handles.edit21, 'String', num2str(Matrix{5, OutputChannels}));
     set(handles.edit22, 'String', num2str(Matrix{6, OutputChannels}));
@@ -761,6 +764,7 @@ if length(OutputChannels) == 1 % Otherwise, multiple select mode - do not update
     set(handles.edit27, 'String', num2str(Matrix{11, OutputChannels}));
     set(handles.edit28, 'String', num2str(Matrix{12, OutputChannels}));
     set(handles.checkbox7, 'Value', Matrix{17, OutputChannels});
+    set(handles.edit37, 'String', num2str(Matrix{18, OutputChannels}));
 end
 if length(TriggerChannels) == 1 % Otherwise, multiple select mode - do not update outputs
     set(handles.popupmenu4, 'Value', Matrix{2, TriggerChannels} + 1);
@@ -1102,3 +1106,27 @@ TargetString = [num2str(Targets(1)) num2str(Targets(2)) num2str(Targets(3)) num2
 TriggerPulsePal(TargetString)
 pause(.2);
 set(handles.pushbutton7, 'CData', handles.StimButtonGFX_Unpressed);
+
+
+
+function edit37_Callback(hObject, eventdata, handles)
+% hObject    handle to edit37 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of edit37 as text
+%        str2double(get(hObject,'String')) returns contents of edit37 as a double
+handles.LastElementChanged = handles.edit37; guidata(hObject, handles);
+GUI2MatrixRow(hObject, handles);
+
+% --- Executes during object creation, after setting all properties.
+function edit37_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to edit37 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end

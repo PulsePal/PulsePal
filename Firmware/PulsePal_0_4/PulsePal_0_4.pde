@@ -99,6 +99,9 @@ unsigned long BurstDuration[4] = {0};
 unsigned long BurstInterval[4] = {0};
 unsigned long PulseTrainDuration[4] = {0};
 unsigned long PulseTrainDelay[4] = {0};
+byte Phase1Voltage[4] = {0};
+byte Phase2Voltage[4] = {0};
+byte RestingVoltage[4] = {128}; // Voltage the system returns to between pulses (128 bits = 0V)
 int CustomTrainID[4] = {0}; // If 0, uses above params. If 1 or 2, triggering plays back timestamps in CustomTrain1 or CustomTrain2 with pulsewidth defined as usual
 int CustomTrainTarget[4] = {0}; // If 0, custom stim timestamps are start-times of pulses. If 1, custom stim timestamps are start-times of bursts.
 int CustomTrainLoop[4] = {0}; // if 0, custom stim plays once. If 1, custom stim loops until PulseTrainDuration.
@@ -111,8 +114,6 @@ byte TriggerMode[2] = {0}; // if 0, "Normal mode", triggers on low to high trans
 unsigned long TriggerButtonDebounce[2] = {0}; // In button mode, number of microseconds the line must be low before stopping the pulse train.
 int CustomPulseTimeIndex[4] = {0}; // Keeps track of the pulse number being played in custom stim condition
 unsigned long CustomTrainNpulses[2] = {0}; // Number of pulses in the stimulus
-byte Phase1Voltage[4] = {0};
-byte Phase2Voltage[4] = {0};
 int ClickerX = 0; // Value of analog reads from X line of joystick input device
 int ClickerY = 0; // Value of analog reads from Y line of joystick input device
 boolean ClickerButtonState = 0; // Value of digital reads from button line of joystick input device
@@ -207,29 +208,23 @@ void setup() {
     pinMode(DACLatchPin, OUTPUT);
     pinMode(InputLEDLines[0], OUTPUT);
     pinMode(InputLEDLines[1], OUTPUT);
-    // Set DAC to 0V on all channels
-    digitalWrite(DACLoadPin,HIGH);
-    digitalWrite(DACLatchPin, HIGH);
-    for (int x = 0; x < 4; x++) {
-      spi.write(x);
-      spi.write(128);
-      digitalWrite(DACLoadPin, LOW);
-      digitalWrite(DACLoadPin, HIGH);
-      DACValues[x] = 128;
-    }
-    //---end Set DAC
   
-    digitalWrite(DACLatchPin,LOW);
-    digitalWrite(DACLatchPin, HIGH); 
     RestoreParametersFromEEPROM();
     if (ValidEEPROMProgram != 1) {
       LoadDefaultParameters();
     }
+    // Set DAC to resting voltage on all channels
+    for (int x = 0; x < 4; x++) {
+      DACValues[x] = RestingVoltage[x];
+    }
+    dacWrite(DACValues);
+    
     RestoreCustomStimuli();
     write2Screen(CommanderString," Click for menu");
     SystemTime = micros();
     LastLoopTime = SystemTime;
     DefaultInputLevel = 1 - TriggerLevel;
+    
 }
 
 void loop() {
@@ -289,6 +284,7 @@ void loop() {
           CustomTrainID[x] = SerialReadByte();
           CustomTrainTarget[x] = SerialReadByte();
           CustomTrainLoop[x] = SerialReadByte();
+          RestingVoltage[x] = SerialReadByte();
         }
        for (int x = 0; x < 2; x++) { // Read 8 trigger address bytes
          for (int y = 0; y < 4; y++) {
@@ -302,7 +298,9 @@ void loop() {
          if ((BurstDuration[x] == 0) || (BurstInterval[x] == 0)) {UsesBursts[x] = false;} else {UsesBursts[x] = true;}
          if (CustomTrainTarget[x] == 1) {UsesBursts[x] = true;}
          if ((CustomTrainID[x] > 0) && (CustomTrainTarget[x] == 0)) {UsesBursts[x] = false;}
+         DACValues[x] = RestingVoltage[x];
        }
+       dacWrite(DACValues);
       } break;
       
       // Program the module - one parameter
@@ -327,12 +325,17 @@ void loop() {
            case 14: {CustomTrainID[inByte3] = SerialReadByte();} break;
            case 15: {CustomTrainTarget[inByte3] = SerialReadByte();} break;
            case 16: {CustomTrainLoop[inByte3] = SerialReadByte();} break;
+           case 17: {RestingVoltage[inByte3] = SerialReadByte();} break;
            case 128: {TriggerMode[inByte3] = SerialReadByte();} break;
         }
         if (inByte2 < 14) {
           if ((BurstDuration[inByte3] == 0) || (BurstInterval[inByte3] == 0)) {UsesBursts[inByte3] = false;} else {UsesBursts[inByte3] = true;}
           if (CustomTrainTarget[inByte3] == 1) {UsesBursts[inByte3] = true;}
           if ((CustomTrainID[inByte3] > 0) && (CustomTrainTarget[inByte3] == 0)) {UsesBursts[inByte3] = false;}
+        }
+        if (inByte2 == 17) {
+          DACValues[inByte3] = RestingVoltage[inByte3];
+          dacWrite(DACValues);
         }
         SerialUSB.write(1); // Send confirm byte
       } break;
@@ -672,7 +675,7 @@ void loop() {
                       NextPulseTransitionTime[x] = SystemTime + InterPulseInterval[x];
                       PulseStatus[x] = 0;
                       gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], LOW);
-                      DACValues[x] = 128; 
+                      DACValues[x] = RestingVoltage[x]; 
                   } else {
                     if (CustomTrainTarget[x] == 0) {
                       NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[thisTrainIDIndex][CustomPulseTimeIndex[x]];
@@ -693,7 +696,7 @@ void loop() {
                     } else {
                       PulseStatus[x] = 0;
                       gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], LOW);
-                      DACValues[x] = 128; 
+                      DACValues[x] = RestingVoltage[x]; 
                     }
                   }
      
@@ -717,7 +720,7 @@ void loop() {
                   } else {
                     NextPulseTransitionTime[x] = SystemTime + InterPhaseInterval[x];
                     PulseStatus[x] = 2;
-                    DACValues[x] = 128; 
+                    DACValues[x] = RestingVoltage[x]; 
                   }
                 }
               }
@@ -774,7 +777,7 @@ void loop() {
                  if (!((CustomTrainID[x] == 0) && (InterPulseInterval[x] == 0))) { 
                    PulseStatus[x] = 0;
                    gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], LOW);
-                   DACValues[x] = 128; 
+                   DACValues[x] = RestingVoltage[x]; 
                  } else {
                    PulseStatus[x] = 1;
                    NextPulseTransitionTime[x] = (NextPulseTransitionTime[x] - InterPulseInterval[x]) + (Phase1Duration[x]);
@@ -810,7 +813,7 @@ void loop() {
                       
               }
               BurstStatus[x] = 0;
-              DACValues[x] = 128; 
+              DACValues[x] = RestingVoltage[x]; 
           } else {
           // Determine if burst status should go to 1 now
             NextBurstTransitionTime[x] = SystemTime + BurstDuration[x];
@@ -870,7 +873,7 @@ void killChannel(byte outputChannel) {
   StimulusStatus[outputChannel] = 0;
   PulseStatus[outputChannel] = 0;
   BurstStatus[outputChannel] = 0;
-  DACValues[outputChannel] = 128; 
+  DACValues[outputChannel] = RestingVoltage[outputChannel]; 
   gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[outputChannel], LOW);
 }
 
@@ -971,7 +974,10 @@ void UpdateSettingsMenu(int inByte) {
                     } break; // Follow input 2 (on/off)
           case 15: {CustomTrainID[SelectedChannel-1] = ReturnUserValue(0, 2, 1, 0);} break; // stimulus train duration
           case 16: {CustomTrainTarget[SelectedChannel-1] = ReturnUserValue(0,1,1,4);} break; // Custom stim target (Pulses / Bursts)
-          case 17: {
+          case 17: {RestingVoltage[SelectedChannel-1] = ReturnUserValue(0, 255, 1, 2); // Get user to input resting voltage
+                    DACValues[SelectedChannel-1] = RestingVoltage[SelectedChannel-1]; dacWrite(DACValues); // Update DAC
+                    } break; 
+          case 18: {
             // Exit to channel menu
           inMenu = 1; RefreshChannelMenu(SelectedChannel);
           } break;
@@ -1017,7 +1023,7 @@ void UpdateSettingsMenu(int inByte) {
                LastLoopTime = MicrosTime;
                SystemTime++; 
               }
-              DACValues[SelectedChannel-1] = 128;
+              DACValues[SelectedChannel-1] = RestingVoltage[SelectedChannel-1];
               dacWrite(DACValues);
             } else {
               DACValues[SelectedChannel-1] = Phase1Voltage[SelectedChannel-1];
@@ -1032,7 +1038,7 @@ void UpdateSettingsMenu(int inByte) {
                SystemTime++; 
               }
               if (InterPhaseInterval[SelectedChannel-1] > 0) {
-              DACValues[SelectedChannel-1] = 128;
+              DACValues[SelectedChannel-1] = RestingVoltage[SelectedChannel-1];
               NextPulseTransitionTime[SelectedChannel-1] = SystemTime + InterPhaseInterval[SelectedChannel-1];
               dacWrite(DACValues);
               while (NextPulseTransitionTime[SelectedChannel-1] > SystemTime) {
@@ -1053,7 +1059,7 @@ void UpdateSettingsMenu(int inByte) {
                LastLoopTime = MicrosTime;
                SystemTime++; 
               }
-              DACValues[SelectedChannel-1] = 128;
+              DACValues[SelectedChannel-1] = RestingVoltage[SelectedChannel-1];
               dacWrite(DACValues);
             }
           } break;
@@ -1068,7 +1074,7 @@ void UpdateSettingsMenu(int inByte) {
                BurstStatus[SelectedChannel-1] = 0;
                StimulusStatus[SelectedChannel-1] = 0;
                CustomPulseTimeIndex[SelectedChannel-1] = 0;
-               DACValues[SelectedChannel-1] = 128;
+               DACValues[SelectedChannel-1] = RestingVoltage[SelectedChannel-1];
                dacWrite(DACValues);
                gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[SelectedChannel-1], LOW);
              }
@@ -1140,7 +1146,7 @@ void UpdateSettingsMenu(int inByte) {
       if (inMenu == 4) {SelectedInputAction = SelectedInputAction - 1;}
       if (SelectedInputAction == 0) {SelectedInputAction = 3;}
       if (SelectedChannel == 0) {SelectedChannel = 8;}
-      if (SelectedAction == 0) {SelectedAction = 17;}
+      if (SelectedAction == 0) {SelectedAction = 18;}
       if (SelectedStimMode == 0) {SelectedStimMode = 4;}
     }
     if (LastClickerXState != 2 && ClickerX > 3200) {
@@ -1158,7 +1164,7 @@ void UpdateSettingsMenu(int inByte) {
       if (inMenu == 4) {SelectedInputAction = SelectedInputAction + 1;}
       if (SelectedInputAction == 4) {SelectedInputAction = 1;}
       if (SelectedChannel == 9) {SelectedChannel = 1;}
-      if (SelectedAction == 18) {SelectedAction = 1;}
+      if (SelectedAction == 19) {SelectedAction = 1;}
       if (SelectedStimMode == 5) {SelectedStimMode = 1;}
     }
     if (LastClickerXState != 0 && ClickerX < 2800 && ClickerX > 1200) {
@@ -1223,7 +1229,8 @@ void RefreshActionMenu(int ThisAction) {
           case 14: {write2Screen("<Link Trigger 2>",FormatNumberForDisplay(TriggerAddress[1][SelectedChannel-1], 3));} break; 
           case 15: {write2Screen("<Custom Train# >",FormatNumberForDisplay(CustomTrainID[SelectedChannel-1], 0));} break;
           case 16: {write2Screen("<Custom Target >",FormatNumberForDisplay(CustomTrainTarget[SelectedChannel-1], 4));} break;
-          case 17: {write2Screen("<     Exit     >"," ");} break;
+          case 17: {write2Screen("<RestingVoltage>",FormatNumberForDisplay(RestingVoltage[SelectedChannel-1], 2));} break;
+          case 18: {write2Screen("<     Exit     >"," ");} break;
      }
 }
 void RefreshTriggerMenu(int ThisAction) {
@@ -1354,7 +1361,8 @@ unsigned int ReturnUserValue(unsigned int LowerLimit, unsigned int UpperLimit, u
        case 13:{UserValue = TriggerAddress[0][SelectedChannel-1];} break;
        case 14:{UserValue = TriggerAddress[1][SelectedChannel-1];} break;
        case 15:{UserValue = CustomTrainID[SelectedChannel-1];} break;
-       case 16:{UserValue = CustomTrainTarget[SelectedChannel-1];} break;       
+       case 16:{UserValue = CustomTrainTarget[SelectedChannel-1];} break;
+       case 17:{UserValue = RestingVoltage[SelectedChannel-1];} break;        
      }
      if (Units == 5) {
        UserValue = TriggerMode[SelectedChannel-1];
@@ -1613,8 +1621,8 @@ void PrepareOutputChannelMemoryPage2(byte ChannelNum) {
   PageBytes[15] = TriggerAddress[1][3];
   PageBytes[16] = TriggerMode[0];
   PageBytes[17] = TriggerMode[1];
-  PageBytes[18] = 0; // To be used in future...
-  PageBytes[19] = 0;
+  PageBytes[18] = RestingVoltage[ChannelNum]; 
+  PageBytes[19] = 0; // To be used in future...
   PageBytes[20] = 0;
   PageBytes[21] = 0;
   PageBytes[22] = 0;
@@ -1677,6 +1685,7 @@ void RestoreParametersFromEEPROM() {
     TriggerAddress[1][3] = PageBytes[15];
     TriggerMode[0] = PageBytes[16];
     TriggerMode[1] = PageBytes[17];
+    RestingVoltage[Chan] = PageBytes[18];
   }
   ValidEEPROMProgram = PageBytes[31];
 }
@@ -1826,6 +1835,7 @@ void LoadDefaultParameters() {
       IsBiphasic[x] = 0;
       Phase1Voltage[x] = 192;
       Phase2Voltage[x] = 192;
+      RestingVoltage[x] = 0;
       CustomTrainID[x] = 0;
       CustomTrainTarget[x] = 0;
       CustomTrainLoop[x] = 0;

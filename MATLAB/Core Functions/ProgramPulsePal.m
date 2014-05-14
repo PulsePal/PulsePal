@@ -49,10 +49,13 @@ global PulsePalSystem;
     Phase1Voltages = cell2mat(ProgramMatrix(3,2:5));
     % Extract pulse voltage for phase 2
     Phase2Voltages = cell2mat(ProgramMatrix(4,2:5));
+    % Extract resting voltages
+    RestingVoltages = cell2mat(ProgramMatrix(18,2:5));
     
     % Check if pulse amplitude is in range
-    if (sum(Phase1Voltages > 10) > 0) || (sum(Phase1Voltages < -10) > 0) || (sum(Phase2Voltages > 10) > 0) || (sum(Phase2Voltages < -10) > 0)
-        error('Error: Pulse voltages for Pulse Pal rev0.0.3 must be in the range -10V to 10V, and will be rounded to the nearest 78.125 mV.')
+    AllVoltages = [Phase1Voltages Phase2Voltages RestingVoltages];
+    if (sum(AllVoltages > 10) > 0) || (sum(AllVoltages < -10) > 0)
+        error('Error: Voltages for Pulse Pal rev0.4 must be in the range -10V to 10V, and will be rounded to the nearest 78.125 mV.')
     end
     
     % Check if burst duration is defined when custom timestamps target
@@ -87,6 +90,7 @@ global PulsePalSystem;
     % Extract voltages for phases 1 and 2
     Phase1Voltages = uint8(ceil(((Phase1Voltages+10)/20)*255));
     Phase2Voltages = uint8(ceil(((Phase2Voltages+10)/20)*255));
+    RestingVoltages = uint8(ceil(((RestingVoltages+10)/20)*255));
     
     % Extract input channel settings
     
@@ -106,7 +110,7 @@ global PulsePalSystem;
     
     % Arrange program into a single byte-string
     FormattedProgramTimestamps = TimeData(1:end); 
-    SingleByteOutputParams = [IsBiphasic; Phase1Voltages; Phase2Voltages; FollowsCustomStimID; CustomStimTarget; CustomStimLoop];
+    SingleByteOutputParams = [IsBiphasic; Phase1Voltages; Phase2Voltages; FollowsCustomStimID; CustomStimTarget; CustomStimLoop; RestingVoltages];
     FormattedParams = [SingleByteOutputParams(1:end) Chan1TrigAddressBytes Chan2TrigAddressBytes InputChanMode];
     
     % Send program
