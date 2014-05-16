@@ -132,5 +132,8 @@ if ~isempty(PulsePalMatrix)
     Phase1Durations = cell2mat(PulsePalMatrix(5,2:5))';
     Phase1Durations(TargetChannels) = OriginalSamplingPeriod;
     PulsePalMatrix(5,2:5) = num2cell(Phase1Durations);
+    IsBiphasic = cell2mat(PulsePalMatrix(2,2:5))';
+    IsBiphasic(TargetChannels) = 0;
+    PulsePalMatrix(2,2:5) = num2cell(IsBiphasic);
     ProgramPulsePal(PulsePalMatrix);
 end

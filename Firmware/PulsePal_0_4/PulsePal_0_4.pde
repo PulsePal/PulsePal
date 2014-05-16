@@ -717,7 +717,6 @@ void handler(void) {
                       PulseStatus[x] = 0;
                       gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], LOW);
                       DACValues[x] = RestingVoltage[x]; 
-    
                     }
                   }
      
@@ -779,7 +778,7 @@ void handler(void) {
                   } else if (CustomTrainID[x] == 1) {  
                     if (CustomTrainTarget[x] == 0) {
                       NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[0][CustomPulseTimeIndex[x]];
-                      if (CustomPulseTimeIndex[x] >= (CustomTrainNpulses[0])){
+                      if (CustomPulseTimeIndex[x] == (CustomTrainNpulses[0])){
                           killChannel(x);
                      }
                     } else {
@@ -788,7 +787,7 @@ void handler(void) {
                   } else {
                     if (CustomTrainTarget[x] == 0) {
                         NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[1][CustomPulseTimeIndex[x]];
-                        if (CustomPulseTimeIndex[x] >= (CustomTrainNpulses[1])){
+                        if (CustomPulseTimeIndex[x] == (CustomTrainNpulses[1])){
                          killChannel(x);
                        }
                     } else {
@@ -815,24 +814,23 @@ void handler(void) {
           if (BurstStatus[x] == 1) {
             if (CustomTrainID[x] == 0) {
                      NextPulseTransitionTime[x] = SystemTime + BurstInterval[x];
-                     NextBurstTransitionTime[x] = SystemTime + BurstInterval[x];
-              } else if ((CustomTrainID[x] == 1) &&(CustomTrainTarget[x] == 1)) {
-                     CustomPulseTimeIndex[x] = CustomPulseTimeIndex[x] + 1;
-                     if (CustomPulseTimeIndex[x] > (CustomTrainNpulses[0])){
+                     NextBurstTransitionTime[x] = SystemTime + BurstInterval[x];              
+            } else if (CustomTrainTarget[x] == 1) {
+              CustomPulseTimeIndex[x] = CustomPulseTimeIndex[x] + 1;
+              if (CustomTrainID[x] == 1) {
+                     if (CustomPulseTimeIndex[x] == (CustomTrainNpulses[0])){
                          killChannel(x);
                      }
                      NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[0][CustomPulseTimeIndex[x]];
-                     NextBurstTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[0][CustomPulseTimeIndex[x]];
-                     
-              } else if  ((CustomTrainID[x] == 2) &&(CustomTrainTarget[x] == 1)) {
-                      CustomPulseTimeIndex[x] = CustomPulseTimeIndex[x] + 1;
-                      if (CustomPulseTimeIndex[x] > (CustomTrainNpulses[1])){ 
-                       killChannel(x);
+                     NextBurstTransitionTime[x] = NextPulseTransitionTime[x];
+              } else if  (CustomTrainID[x] == 2) {
+                      if (CustomPulseTimeIndex[x] == (CustomTrainNpulses[1])){ 
+                          killChannel(x);
                       }
                       NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[1][CustomPulseTimeIndex[x]];
-                      NextBurstTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[1][CustomPulseTimeIndex[x]];
-                      
+                      NextBurstTransitionTime[x] = NextPulseTransitionTime[x];
               }
+            }
               BurstStatus[x] = 0;
               DACValues[x] = RestingVoltage[x]; 
           } else {
