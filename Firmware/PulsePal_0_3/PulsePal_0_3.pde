@@ -159,6 +159,7 @@ boolean ContinuousLoopMode[4] = {0}; // If true, the channel loops its programme
 int AnalogValues[2] = {0};
 int SensorValue = 0;
 byte StimulatingState = 0; // 1 if ANY channel is stimulating, 2 if this is the first cycle after the system was triggered. 
+byte LastStimulatingState = 0;
 boolean WasStimulating = 0; // true if any channel was stimulating on the previous loop. Used to force a DAC write after all channels end their stimulation, to return lines to 0
 int nStimulatingChannels = 0; // number of actively stimulating channels
 boolean DACFlags[4] = {0}; // true if an individual DAC needs to be updated
@@ -175,10 +176,11 @@ int lastDebounceTime = 0; // to debounce the joystick button
 boolean lastButtonState = 0;
 boolean ChoiceMade = 0; // determines whether user has chosen a value from a list
 unsigned int UserValue = 0; // The current value displayed on a list of values (written to LCD when choosing parameters)
-char CommanderString[16] = " PULSE PAL v0.4";
+char CommanderString[16] = " PULSE PAL v0.3";
 char ClientStringSuffix[11] = " Connected";
-char DefaultCommanderString[16] = " PULSE PAL v0.4";
+char DefaultCommanderString[16] = " PULSE PAL v0.3";
 byte ValidEEPROMProgram = 0; // A byte read from EEPROM. This is always 1 if the EEPROM has been written to. Used to load defaults on first-time use.
+void handler(void);
 
 void setup() {
   // Enable EEPROM
@@ -224,35 +226,49 @@ void setup() {
     SystemTime = micros();
     LastLoopTime = SystemTime;
     DefaultInputLevel = 1 - TriggerLevel;
-    
+    Timer2.setChannel1Mode(TIMER_OUTPUTCOMPARE);
+    Timer2.setPeriod(20); // in microseconds
+    Timer2.setCompare1(1);      // overflow might be small
+    Timer2.attachCompare1Interrupt(handler);
 }
 
 void loop() {
+  if (StimulatingState == 0) {
+    if (LastStimulatingState != 0) {
+       Timer2.pause();
+       Timer2.setPeriod(20); // in microseconds
+       Timer2.refresh();
+       Timer2.resume();
+     }
+  }
+}
+
+void handler(void) {
   if (SerialReadTimedout == 1) {
+    Timer2.pause();
     HandleReadTimeout(); // Notifies user of error, then prompts to click and restores DEFAULT channel settings.
     SerialReadTimedout = 0;
+    Timer2.resume();
   }
   if (StimulatingState == 0) {
-      MicrosTime = micros();
-      UpdateSettingsMenu(inByte);
+      UpdateSettingsMenu();
       SystemTime = 0;
-   } else if (StimulatingState == 1) {
-     while ((MicrosTime-LastLoopTime) < CycleDuration) {  // Make sure loop runs once every 100us 
-         MicrosTime = micros();
-      } 
+   } else {
+     if (StimulatingState == 2) {
+       Timer2.pause();
+       Timer2.setPeriod(100); // in microseconds
+       Timer2.refresh();
+       Timer2.resume();
+       StimulatingState = 1;
+     }
      dacWrite(DACValues); // Update DAC
      SystemTime++; // Increment system time (# of cycles since stim start)
      ClickerButtonState = digitalRead(ClickerButtonLine);
      if (ClickerButtonState == ClickerButtonLogicHigh){    // A button click ends ongoing stimulation on all channels.
        AbortAllPulseTrains();
      }
-  } else { // First loop after transition Stimulating state, don't waste time enforcing cycle duration or checking button
-     MicrosTime = micros();
-     dacWrite(DACValues); // Update DAC
-     SystemTime++; // Increment system time (# of cycles since stim start)
-     StimulatingState = 1;
   }
-  LastLoopTime = MicrosTime;
+  LastStimulatingState = StimulatingState;
       
   if (SerialUSB.available() > 0) {
     CommandByte = SerialUSB.read();
@@ -682,17 +698,21 @@ void loop() {
                     } else {
                       NextPulseTransitionTime[x] = SystemTime + InterPulseInterval[x];
                     }
-                    if ((CustomTrainLoop[x] == 1) && (CustomPulseTimeIndex[x] == CustomTrainNpulses[thisTrainIDIndex])) {
-                            CustomPulseTimeIndex[x] = 0;
-                            PulseTrainTimestamps[x] = SystemTime;
-                            DACValues[x] = CustomVoltages[thisTrainIDIndex][CustomPulseTimeIndex[x]];
-                            if ((CustomPulseTimes[thisTrainIDIndex][CustomPulseTimeIndex[x]+1] - CustomPulseTimes[thisTrainIDIndex][CustomPulseTimeIndex[x]]) > Phase1Duration[x]) {
-                              PulseStatus[x] = 1;
-                            } else {
-                              PulseStatus[x] = 0;
-                            }
-                            NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + Phase1Duration[x];
-                            CustomPulseTimeIndex[x] = CustomPulseTimeIndex[x] + 1;
+                    if (CustomPulseTimeIndex[x] == CustomTrainNpulses[thisTrainIDIndex]) {
+                      if (CustomTrainLoop[x] == 1) {
+                              CustomPulseTimeIndex[x] = 0;
+                              PulseTrainTimestamps[x] = SystemTime;
+                              DACValues[x] = CustomVoltages[thisTrainIDIndex][CustomPulseTimeIndex[x]];
+                              if ((CustomPulseTimes[thisTrainIDIndex][CustomPulseTimeIndex[x]+1] - CustomPulseTimes[thisTrainIDIndex][CustomPulseTimeIndex[x]]) > Phase1Duration[x]) {
+                                PulseStatus[x] = 1;
+                              } else {
+                                PulseStatus[x] = 0;
+                              }
+                              NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + Phase1Duration[x];
+                              CustomPulseTimeIndex[x] = CustomPulseTimeIndex[x] + 1;
+                      } else {
+                        killChannel(x);
+                      }
                     } else {
                       PulseStatus[x] = 0;
                       gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], LOW);
@@ -758,7 +778,7 @@ void loop() {
                   } else if (CustomTrainID[x] == 1) {  
                     if (CustomTrainTarget[x] == 0) {
                       NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[0][CustomPulseTimeIndex[x]];
-                      if (CustomPulseTimeIndex[x] >= (CustomTrainNpulses[0])){
+                      if (CustomPulseTimeIndex[x] == (CustomTrainNpulses[0])){
                           killChannel(x);
                      }
                     } else {
@@ -767,7 +787,7 @@ void loop() {
                   } else {
                     if (CustomTrainTarget[x] == 0) {
                         NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[1][CustomPulseTimeIndex[x]];
-                        if (CustomPulseTimeIndex[x] >= (CustomTrainNpulses[1])){
+                        if (CustomPulseTimeIndex[x] == (CustomTrainNpulses[1])){
                          killChannel(x);
                        }
                     } else {
@@ -794,24 +814,23 @@ void loop() {
           if (BurstStatus[x] == 1) {
             if (CustomTrainID[x] == 0) {
                      NextPulseTransitionTime[x] = SystemTime + BurstInterval[x];
-                     NextBurstTransitionTime[x] = SystemTime + BurstInterval[x];
-              } else if ((CustomTrainID[x] == 1) &&(CustomTrainTarget[x] == 1)) {
-                     CustomPulseTimeIndex[x] = CustomPulseTimeIndex[x] + 1;
-                     if (CustomPulseTimeIndex[x] > (CustomTrainNpulses[0])){
+                     NextBurstTransitionTime[x] = SystemTime + BurstInterval[x];              
+            } else if (CustomTrainTarget[x] == 1) {
+              CustomPulseTimeIndex[x] = CustomPulseTimeIndex[x] + 1;
+              if (CustomTrainID[x] == 1) {
+                     if (CustomPulseTimeIndex[x] == (CustomTrainNpulses[0])){
                          killChannel(x);
                      }
                      NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[0][CustomPulseTimeIndex[x]];
-                     NextBurstTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[0][CustomPulseTimeIndex[x]];
-                     
-              } else if  ((CustomTrainID[x] == 2) &&(CustomTrainTarget[x] == 1)) {
-                      CustomPulseTimeIndex[x] = CustomPulseTimeIndex[x] + 1;
-                      if (CustomPulseTimeIndex[x] > (CustomTrainNpulses[1])){ 
-                       killChannel(x);
+                     NextBurstTransitionTime[x] = NextPulseTransitionTime[x];
+              } else if  (CustomTrainID[x] == 2) {
+                      if (CustomPulseTimeIndex[x] == (CustomTrainNpulses[1])){ 
+                          killChannel(x);
                       }
                       NextPulseTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[1][CustomPulseTimeIndex[x]];
-                      NextBurstTransitionTime[x] = PulseTrainTimestamps[x] + CustomPulseTimes[1][CustomPulseTimeIndex[x]];
-                      
+                      NextBurstTransitionTime[x] = NextPulseTransitionTime[x];
               }
+            }
               BurstStatus[x] = 0;
               DACValues[x] = RestingVoltage[x]; 
           } else {
@@ -900,7 +919,7 @@ void dacWrite(byte DACVal[]) {
       GPIOB_BASE->BSRR = 1<<6; // DAC latch pin high
 }
 
-void UpdateSettingsMenu(int inByte) {
+void UpdateSettingsMenu() {
     ClickerX = analogRead(ClickerXLine);
     ClickerY = analogRead(ClickerYLine);
     ClickerButtonState = ReadDebouncedButton();
@@ -1002,7 +1021,7 @@ void UpdateSettingsMenu(int inByte) {
             write2Screen("< Single Train >"," ");
             PreStimulusStatus[SelectedChannel-1] = 1;
             BurstStatus[SelectedChannel-1] = 1;
-            if (StimulatingState == 0) {ResetSystemTime();}
+            if (StimulatingState == 0) {ResetSystemTime(); StimulatingState = 2;}
             MicrosTime = micros();
             PrePulseTrainTimestamps[SelectedChannel-1] = SystemTime;  
           } break;
@@ -1331,11 +1350,12 @@ if (Units == 2) {
 }
 
 boolean ReadDebouncedButton() {
+  unsigned int DebounceTime = millis();
   ClickerButtonState = digitalRead(ClickerButtonLine);
   //ClickerButtonState = gpio_read_bit(INPUT_PIN_PORT, ClickerButtonBit);
-    if (ClickerButtonState != lastButtonState) {lastDebounceTime = MicrosTime;}
+    if (ClickerButtonState != lastButtonState) {lastDebounceTime = DebounceTime;}
     lastButtonState = ClickerButtonState;
-   if (((MicrosTime - lastDebounceTime) > 75000) && (ClickerButtonState == ClickerButtonLogicHigh)) {
+   if (((DebounceTime - lastDebounceTime) > 75) && (ClickerButtonState == ClickerButtonLogicHigh)) {
       return 1;
    } else {
      return 0;
@@ -1419,21 +1439,25 @@ unsigned int ReturnUserValue(unsigned int LowerLimit, unsigned int UpperLimit, u
        case 4: {CursorPos = 0; CursorPosLeftLimit = 0; CursorPosRightLimit = 0;} break; // Format for Pulses/Bursts
        case 5: {CursorPos = 0; CursorPosLeftLimit = 0; CursorPosRightLimit = 0;} break; // Format for trigger mode
        }
-     unsigned int CursorToggleTime = micros();
-     unsigned int CursorToggleInterval = 300000; // Cursor toggle interval in microseconds
+     unsigned long CursorToggleTimer = 0; 
+     unsigned long CursorToggleThreshold = 20000;
      boolean CursorOn = 0;
+     delay(75); // Acts as a debounce so user has released pushbutton before reading for an entry
      while (ChoiceMade == 0) {
-       MicrosTime = micros();
-       if (MicrosTime > CursorToggleTime) {
+       CursorToggleTimer++;
+       if (CursorToggleTimer == CursorToggleThreshold) {
          switch (CursorOn) {
-           case 0: { lcd.setCursor(ValidCursorPositions[CursorPos], 1); lcd.cursor(); CursorOn = 1;} break;
+           case 0: {lcd.setCursor(ValidCursorPositions[CursorPos], 1); lcd.cursor(); CursorOn = 1;} break;
            case 1: {lcd.noCursor(); CursorOn = 0;} break;
          }
-         CursorToggleTime = MicrosTime+CursorToggleInterval;
+         CursorToggleTimer = 0;
        }
        ClickerX = analogRead(ClickerXLine);
        ClickerY = analogRead(ClickerYLine);
-       ChoiceMade = ReadDebouncedButton();
+       ClickerButtonState = digitalRead(ClickerButtonLine);
+       if (ClickerButtonState == ClickerButtonLogicHigh) {
+         ChoiceMade = 1;
+       }       
        if (ClickerY < 1500) {
           switch(Units) {
             case 0: {
@@ -1525,14 +1549,14 @@ unsigned int ReturnUserValue(unsigned int LowerLimit, unsigned int UpperLimit, u
          ScrollSpeedDelay = 300;
          lcd.noCursor();
           lcd.setCursor(0, 1); lcd.print(FormatNumberForDisplay(UserValue, Units));
-         lcd.setCursor(ValidCursorPositions[CursorPos], 1); lcd.cursor(); CursorOn = 1; CursorToggleTime = MicrosTime+CursorToggleInterval;
+         lcd.setCursor(ValidCursorPositions[CursorPos], 1); lcd.cursor(); CursorOn = 1; 
        }
        if ((ClickerX < 1500) && (CursorPos > CursorPosLeftLimit)) {
          CursorPos = CursorPos - 1;
          ScrollSpeedDelay = 300;
          lcd.noCursor();
          lcd.setCursor(0, 1); lcd.print(FormatNumberForDisplay(UserValue, Units));
-         lcd.setCursor(ValidCursorPositions[CursorPos], 1); lcd.cursor(); CursorOn = 1; CursorToggleTime = MicrosTime+CursorToggleInterval;
+         lcd.setCursor(ValidCursorPositions[CursorPos], 1); lcd.cursor(); CursorOn = 1; 
        }
      delay(ScrollSpeedDelay);  
      }
@@ -1547,7 +1571,7 @@ unsigned int ReturnUserValue(unsigned int LowerLimit, unsigned int UpperLimit, u
      } else {
        inMenu = 2;
      }
-     delay(100);
+     delay(200);
      lcd.setCursor(0, 1); lcd.print(FormatNumberForDisplay(UserValue, Units));
      //lcd.noCursor();
      return UserValue;
