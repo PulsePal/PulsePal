@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
-function words = ParseCOMString_UNIX(string)
+function words = ParseCOMString_MAC(string)
 string = strtrim(string);
 string = lower(string);
 nSpaces = sum(string == char(9)) + sum(string == char(10));

@@ -88,6 +88,9 @@ handles.Matrix = ParameterMatrix;
 handles.StimButtonGFX_Unpressed = imread('Stim_Unselected.bmp');
 handles.StimButtonGFX_Pressed = imread('Stim_Selected.bmp');
 set(handles.pushbutton7, 'CData', handles.StimButtonGFX_Unpressed);
+if islinux
+    set(handles.listbox1, 'Position', [21 399 75 61]);
+end
 
 
 % Choose default command line output for PulsePalProgramGUI

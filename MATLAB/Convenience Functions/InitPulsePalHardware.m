@@ -29,9 +29,12 @@ else
     % Make list of all ports
     if ispc
         Ports = FindLeafLabsPorts;
-    else
+    elseif ismac
         [trash, RawSerialPortList] = system('ls /dev/tty.*');
-        Ports = ParseCOMString_UNIX(RawSerialPortList);
+        Ports = ParseCOMString_MAC(RawSerialPortList);
+    else
+        [trash, RawSerialPortList] = system('ls /dev/ttyS1*');
+        Ports = ParseCOMString_LINUX(RawSerialPortList);
     end
 end
 if isempty(Ports)

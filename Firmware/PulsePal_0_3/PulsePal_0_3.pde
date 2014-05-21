@@ -227,7 +227,7 @@ void setup() {
     LastLoopTime = SystemTime;
     DefaultInputLevel = 1 - TriggerLevel;
     Timer2.setChannel1Mode(TIMER_OUTPUTCOMPARE);
-    Timer2.setPeriod(20); // in microseconds
+    Timer2.setPeriod(50); // in microseconds
     Timer2.setCompare1(1);      // overflow might be small
     Timer2.attachCompare1Interrupt(handler);
 }
@@ -236,7 +236,7 @@ void loop() {
   if (StimulatingState == 0) {
     if (LastStimulatingState != 0) {
        Timer2.pause();
-       Timer2.setPeriod(20); // in microseconds
+       Timer2.setPeriod(50); // in microseconds
        Timer2.refresh();
        Timer2.resume();
      }
