@@ -92,7 +92,7 @@ end
     else
         nPulsesByte = uint32(nPulses);
     end
-    ByteString = [OpCode USBPacketLengthCorrectionByte typecast(nPulsesByte, 'uint8')]; 
+    ByteString = [PulsePalSystem.OpMenuByte OpCode USBPacketLengthCorrectionByte typecast(nPulsesByte, 'uint8')]; 
     fwrite(PulsePalSystem.SerialPort, ByteString, 'uint8');
     % Send PulseTimes
     nPackets = ceil(length(Output)/200);
@@ -133,7 +133,7 @@ end
     
 else % This is the normal transmission scheme, as a single bytestring
     nPulsesByte = uint32(nPulses);
-    ByteString = [OpCode 0 typecast(nPulsesByte, 'uint8') typecast(Output, 'uint8') VoltageOutput];
+    ByteString = [PulsePalSystem.OpMenuByte OpCode 0 typecast(nPulsesByte, 'uint8') typecast(Output, 'uint8') VoltageOutput];
     fwrite(PulsePalSystem.SerialPort, ByteString, 'uint8');
 end
 

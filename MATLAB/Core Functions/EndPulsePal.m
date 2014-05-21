@@ -24,7 +24,7 @@ pause(1);
 if PulsePalSystem.SerialPort.BytesAvailable > 0
     fread(PulsePalSystem.SerialPort, PulsePalSystem.SerialPort.BytesAvailable);
 end
-fwrite(PulsePalSystem.SerialPort, char(81));
+fwrite(PulsePalSystem.SerialPort, [PulsePalSystem.OpMenuByte 81], 'uint8');
 fclose(PulsePalSystem.SerialPort);
 delete(PulsePalSystem.SerialPort);
 PulsePalSystem.SerialPort = [];

@@ -29,6 +29,7 @@ classdef PulsePalObject < handle
         CurrentProgram
         PulsePalPath
         SerialPort
+        OpMenuByte
     end
     
     methods

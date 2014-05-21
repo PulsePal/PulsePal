@@ -74,13 +74,14 @@ while (Found == 0) && (x < length(Ports))
     end
     if AvailablePort == 1
         pause(.5);
-        fwrite(TestSer, char(72));
+        fwrite(TestSer, [PulsePalSystem.OpMenuByte 72], 'uint8');
         tic
         while TestSer.BytesAvailable == 0
-            fwrite(TestSer, char(72));
+            fwrite(TestSer, [PulsePalSystem.OpMenuByte 72], 'uint8');
             if toc > 1
                 break
             end
+            pause(.1);
         end
         g = 0;
         try
@@ -105,11 +106,11 @@ fopen(PulsePalSystem.SerialPort);
 pause(.1);
 tic
 while PulsePalSystem.SerialPort.BytesAvailable == 0
-        fwrite(PulsePalSystem.SerialPort, char(72));
-        pause(.1);
+    fwrite(PulsePalSystem.SerialPort, [PulsePalSystem.OpMenuByte 72], 'uint8');
         if toc > 1
-            break;
+            break
         end
+    pause(.1);
 end
 HandShakeOkByte = fread(PulsePalSystem.SerialPort, 1);
 if HandShakeOkByte == 75

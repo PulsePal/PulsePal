@@ -40,10 +40,11 @@ catch
         PulsePalSystem.LastProgramSent = [];
         PulsePalSystem.PulsePalPath = [];
         PulsePalSystem.SerialPort = [];
-        PulsePalSystem.PulsePalPath = which('PulsePal');
-        PulsePalSystem.PulsePalPath = PulsePalSystem.PulsePalPath(1:(length(PulsePalSystem.PulsePalPath)-10));
-        PulsePalSystem.OS = system_dependent('getos');
     end
+    PulsePalSystem.PulsePalPath = which('PulsePal');
+    PulsePalSystem.PulsePalPath = PulsePalSystem.PulsePalPath(1:(length(PulsePalSystem.PulsePalPath)-10));
+    PulsePalSystem.OS = system_dependent('getos');
+    PulsePalSystem.OpMenuByte = 213;
 end
 
 try

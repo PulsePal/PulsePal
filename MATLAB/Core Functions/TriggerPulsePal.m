@@ -36,4 +36,4 @@ if TriggerAddress > 15
      error('Error: There are only four output channels.')
 end
 TriggerAddress = uint8(TriggerAddress);
-fwrite(PulsePalSystem.SerialPort, [char(77) char(TriggerAddress)]);
+fwrite(PulsePalSystem.SerialPort, [PulsePalSystem.OpMenuByte 77 TriggerAddress], 'uint8');

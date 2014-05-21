@@ -118,7 +118,7 @@ global PulsePalSystem;
 %     fwrite(PulsePalSystem.SerialPort, FormattedProgramTimestamps, 'uint32'); % Send 32 bit time data
 %     fwrite(PulsePalSystem.SerialPort, FormattedParams, 'uint8'); % Send 8-bit params
     
-    ByteString = [73 typecast(FormattedProgramTimestamps, 'uint8') FormattedParams];
+    ByteString = [PulsePalSystem.OpMenuByte 73 typecast(FormattedProgramTimestamps, 'uint8') FormattedParams];
     fwrite(PulsePalSystem.SerialPort, ByteString, 'uint8');
     ConfirmBit = fread(PulsePalSystem.SerialPort, 1); % Get confirmation
     PulsePalSystem.CurrentProgram = OriginalProgMatrix; % Update Pulse Pal object

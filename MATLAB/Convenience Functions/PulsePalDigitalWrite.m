@@ -27,5 +27,5 @@ end
 if ~((LogicLevel == 1) || (LogicLevel == 0))
     error('Error: Logic level must be 0 or 1')
 end
-fwrite(PulsePalSystem.SerialPort, [86 MaplePin LogicLevel], 'uint8');
+fwrite(PulsePalSystem.SerialPort, [PulsePalSystem.OpMenuByte 86 MaplePin LogicLevel], 'uint8');
 

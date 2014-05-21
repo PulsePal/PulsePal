@@ -49,9 +49,9 @@ function ConfirmBit = ProgramPulsePalParam(Channel, ParamCode, ParamValue)
 
 % convert string param code to integer
 if ischar(ParamCode)
-    ParamCode = strncmpi(ParamCode, {'isbiphasic' 'phase1voltage' 'phase2voltage' 'phase1duration' 'interphaseinterval' 'phase2duration'...
+    ParamCode = strcmpi(ParamCode, {'isbiphasic' 'phase1voltage' 'phase2voltage' 'phase1duration' 'interphaseinterval' 'phase2duration'...
         'interpulseinterval' 'burstduration' 'burstinterval' 'pulsetrainduration' 'pulsetraindelay'...
-        'linkedtotriggerCH1' 'linkedtotriggerCH2' 'customtrainid' 'customtraintarget' 'customtrainloop' 'restingvoltage'}, 7);
+        'linkedtotriggerCH1' 'linkedtotriggerCH2' 'customtrainid' 'customtraintarget' 'customtrainloop' 'restingvoltage'});
     if sum(ParamCode) == 0
         error('Error: invalid parameter code.')
     end
@@ -99,7 +99,7 @@ else
 end
 
 % Assemble byte string instructing PulsePal to recieve a new single parameter (op code 74) and specify parameter and target channel before data
-Bytestring = [74 ParamCode Channel ParamBytes];
+Bytestring = [PulsePalSystem.OpMenuByte 74 ParamCode Channel ParamBytes];
 fwrite(PulsePalSystem.SerialPort, Bytestring, 'uint8');
 ConfirmBit = fread(PulsePalSystem.SerialPort, 1);
 if ConfirmBit == 1

@@ -24,6 +24,6 @@ global PulsePalSystem;
 if (MaplePin < 1) || (MaplePin > 45)
     error('Error: Invalid Maple pin.')
 end
-fwrite(PulsePalSystem.SerialPort, [87 MaplePin], 'uint8');
+fwrite(PulsePalSystem.SerialPort, [PulsePalSystem.OpMenuByte 87 MaplePin], 'uint8');
 LogicLevel = fread(PulsePalSystem.SerialPort, 1);
 

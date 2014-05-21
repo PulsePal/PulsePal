@@ -51,7 +51,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define TriggerLevel 1
 #define ClickerButtonLogicHigh 1
 
-
 // Firmware build number
 unsigned long FirmwareVersion = 2;
 
@@ -108,6 +107,7 @@ int CustomTrainLoop[4] = {0}; // if 0, custom stim plays once. If 1, custom stim
 int ConnectedToApp = 0; // 0 for none, 1 for MATLAB client, 2 for Labview client, 3 for Python client
 
 // Variables used in programming
+byte OpMenuByte = 213; // This byte must be the first byte in any serial transmission to Pulse Pal. Reduces the probability of interference from port-scanning software
 byte TriggerAddress[2][4] = {0}; // This specifies which output channels get triggered by trigger channel 1 (row 1) or trigger channel 2 (row 2)
 byte TriggerMode[2] = {0}; // if 0, "Normal mode", triggers on low to high transitions and ignores triggers until end of stimulus train. if 1, "Toggle mode", triggers on low to high and shuts off stimulus
 //train on next high to low. If 2, "Button mode", triggers on low to high and shuts off on high to low.
@@ -272,269 +272,272 @@ void handler(void) {
       
   if (SerialUSB.available() > 0) {
     CommandByte = SerialUSB.read();
-    switch (CommandByte) {
-      case 72: { // Handshake
-        SerialUSB.write(75); // Send 'K' (as in ok)
-        breakLong(FirmwareVersion); // Send 32-bit firmware version
-        SerialUSB.write(BrokenBytes[0]);
-        SerialUSB.write(BrokenBytes[1]);
-        SerialUSB.write(BrokenBytes[2]);
-        SerialUSB.write(BrokenBytes[3]); 
-        ConnectedToApp = 1;
-      } break;
-      case 73: { // Program the module - total program (faster than item-wise in some instances)
-        for (int x = 0; x < 4; x++) {
-          Phase1Duration[x] = SerialReadLong();
-          InterPhaseInterval[x] = SerialReadLong();
-          Phase2Duration[x] = SerialReadLong();
-          InterPulseInterval[x] = SerialReadLong();
-          BurstDuration[x] = SerialReadLong();
-          BurstInterval[x] = SerialReadLong();
-          PulseTrainDuration[x] = SerialReadLong();
-          PulseTrainDelay[x] = SerialReadLong();
-        }
-        for (int x = 0; x < 4; x++) {
-          IsBiphasic[x] = SerialReadByte();
-          Phase1Voltage[x] = SerialReadByte();
-          Phase2Voltage[x] = SerialReadByte();
-          CustomTrainID[x] = SerialReadByte();
-          CustomTrainTarget[x] = SerialReadByte();
-          CustomTrainLoop[x] = SerialReadByte();
-          RestingVoltage[x] = SerialReadByte();
-        }
-       for (int x = 0; x < 2; x++) { // Read 8 trigger address bytes
-         for (int y = 0; y < 4; y++) {
-           TriggerAddress[x][y] = SerialReadByte();
-         }
-       }
-       TriggerMode[0] = SerialReadByte(); 
-       TriggerMode[1] = SerialReadByte();
-       SerialUSB.write(1); // Send confirm byte
-       for (int x = 0; x < 4; x++) {
-         if ((BurstDuration[x] == 0) || (BurstInterval[x] == 0)) {UsesBursts[x] = false;} else {UsesBursts[x] = true;}
-         if (CustomTrainTarget[x] == 1) {UsesBursts[x] = true;}
-         if ((CustomTrainID[x] > 0) && (CustomTrainTarget[x] == 0)) {UsesBursts[x] = false;}
-         DACValues[x] = RestingVoltage[x];
-       }
-       dacWrite(DACValues);
-      } break;
-      
-      // Program the module - one parameter
-      case 74: {
-        inByte2 = SerialReadByte();
-        inByte3 = SerialReadByte(); // inByte3 = channel (1-4)
-        inByte3 = inByte3 - 1; // Convert channel for zero-indexing
-        switch (inByte2) { 
-           case 1: {IsBiphasic[inByte3] = SerialReadByte();} break;
-           case 2: {Phase1Voltage[inByte3] = SerialReadByte();} break;
-           case 3: {Phase2Voltage[inByte3] = SerialReadByte();} break;
-           case 4: {Phase1Duration[inByte3] = SerialReadLong();} break;
-           case 5: {InterPhaseInterval[inByte3] = SerialReadLong();} break;
-           case 6: {Phase2Duration[inByte3] = SerialReadLong();} break;
-           case 7: {InterPulseInterval[inByte3] = SerialReadLong();} break;
-           case 8: {BurstDuration[inByte3] = SerialReadLong();} break;
-           case 9: {BurstInterval[inByte3] = SerialReadLong();} break;
-           case 10: {PulseTrainDuration[inByte3] = SerialReadLong();} break;
-           case 11: {PulseTrainDelay[inByte3] = SerialReadLong();} break;
-           case 12: {inByte4 = SerialReadByte(); TriggerAddress[0][inByte3] = inByte4;} break;
-           case 13: {inByte4 = SerialReadByte(); TriggerAddress[1][inByte3] = inByte4;} break;
-           case 14: {CustomTrainID[inByte3] = SerialReadByte();} break;
-           case 15: {CustomTrainTarget[inByte3] = SerialReadByte();} break;
-           case 16: {CustomTrainLoop[inByte3] = SerialReadByte();} break;
-           case 17: {RestingVoltage[inByte3] = SerialReadByte();} break;
-           case 128: {TriggerMode[inByte3] = SerialReadByte();} break;
-        }
-        if (inByte2 < 14) {
-          if ((BurstDuration[inByte3] == 0) || (BurstInterval[inByte3] == 0)) {UsesBursts[inByte3] = false;} else {UsesBursts[inByte3] = true;}
-          if (CustomTrainTarget[inByte3] == 1) {UsesBursts[inByte3] = true;}
-          if ((CustomTrainID[inByte3] > 0) && (CustomTrainTarget[inByte3] == 0)) {UsesBursts[inByte3] = false;}
-        }
-        if (inByte2 == 17) {
-          DACValues[inByte3] = RestingVoltage[inByte3];
-          dacWrite(DACValues);
-        }
-        SerialUSB.write(1); // Send confirm byte
-      } break;
-
-      // Program custom stimulus 1
-      case 75: {
-        USBPacketCorrectionByte = SerialReadByte();
-        CustomTrainNpulses[0] = SerialReadLong();
-        for (int x = 0; x < CustomTrainNpulses[0]; x++) {
-          CustomPulseTimes[0][x] = SerialReadLong();
-        }
-        for (int x = 0; x < CustomTrainNpulses[0]; x++) {
-          CustomVoltages[0][x] = SerialReadByte();
-        }
-        if (USBPacketCorrectionByte == 1) {
-          USBPacketCorrectionByte = 0;
-          CustomTrainNpulses[0] = CustomTrainNpulses[0]  - 1;
-        }
-        SerialUSB.write(1); // Send confirm byte
-      } break;
-      // Program custom stimulus 2
-      case 76: {
-        USBPacketCorrectionByte = SerialReadByte();
-        CustomTrainNpulses[1] = SerialReadLong();
-        for (int x = 0; x < CustomTrainNpulses[1]; x++) {
-          CustomPulseTimes[1][x] = SerialReadLong();
-        }
-        for (int x = 0; x < CustomTrainNpulses[1]; x++) {
-          CustomVoltages[1][x] = SerialReadByte();
-        }
-        if (USBPacketCorrectionByte == 1) {
-          USBPacketCorrectionByte = 0;
-          CustomTrainNpulses[1] = CustomTrainNpulses[1]  - 1;
-        }
-        SerialUSB.write(1); // Send confirm byte
-      } break;      
-      // Soft-trigger the module
-      case 77: {
-        inByte2 = SerialReadByte();
-        for (int x = 0; x < 4; x++) {
-          PreStimulusStatus[x] = bitRead(inByte2, x);
-          if (PreStimulusStatus[x] == 1) {
-            if ((CustomTrainID[x] != 0) && (CustomTrainTarget[x] == 1)) {BurstStatus[x] = 0;} else {
-                 BurstStatus[x] = 1; 
-            }
-          if (StimulatingState == 0) {ResetSystemTime(); StimulatingState = 2;}
-            PrePulseTrainTimestamps[x] = SystemTime;
+    if (CommandByte == OpMenuByte) {
+      CommandByte = SerialReadByte();
+      switch (CommandByte) {
+        case 72: { // Handshake
+          SerialUSB.write(75); // Send 'K' (as in ok)
+          breakLong(FirmwareVersion); // Send 32-bit firmware version
+          SerialUSB.write(BrokenBytes[0]);
+          SerialUSB.write(BrokenBytes[1]);
+          SerialUSB.write(BrokenBytes[2]);
+          SerialUSB.write(BrokenBytes[3]); 
+          ConnectedToApp = 1;
+        } break;
+        case 73: { // Program the module - total program (faster than item-wise in some instances)
+          for (int x = 0; x < 4; x++) {
+            Phase1Duration[x] = SerialReadLong();
+            InterPhaseInterval[x] = SerialReadLong();
+            Phase2Duration[x] = SerialReadLong();
+            InterPulseInterval[x] = SerialReadLong();
+            BurstDuration[x] = SerialReadLong();
+            BurstInterval[x] = SerialReadLong();
+            PulseTrainDuration[x] = SerialReadLong();
+            PulseTrainDelay[x] = SerialReadLong();
           }
-        }
-      } break;
-      case 78: { 
-        lcd.clear();
-         lcd.home(); 
-         byte ByteCount = 0;
-        // read all the available characters
-        inByte2 = SerialReadByte(); // Total length of message to follow (including newline)
-        while (ByteCount < inByte2) {
-            // display each character to the LCD
-            inByte = SerialReadByte();
-            if (inByte != 254) {
-              lcd.write(inByte);
-            } else {
-              lcd.setCursor(0, 1);
+          for (int x = 0; x < 4; x++) {
+            IsBiphasic[x] = SerialReadByte();
+            Phase1Voltage[x] = SerialReadByte();
+            Phase2Voltage[x] = SerialReadByte();
+            CustomTrainID[x] = SerialReadByte();
+            CustomTrainTarget[x] = SerialReadByte();
+            CustomTrainLoop[x] = SerialReadByte();
+            RestingVoltage[x] = SerialReadByte();
+          }
+         for (int x = 0; x < 2; x++) { // Read 8 trigger address bytes
+           for (int y = 0; y < 4; y++) {
+             TriggerAddress[x][y] = SerialReadByte();
+           }
+         }
+         TriggerMode[0] = SerialReadByte(); 
+         TriggerMode[1] = SerialReadByte();
+         SerialUSB.write(1); // Send confirm byte
+         for (int x = 0; x < 4; x++) {
+           if ((BurstDuration[x] == 0) || (BurstInterval[x] == 0)) {UsesBursts[x] = false;} else {UsesBursts[x] = true;}
+           if (CustomTrainTarget[x] == 1) {UsesBursts[x] = true;}
+           if ((CustomTrainID[x] > 0) && (CustomTrainTarget[x] == 0)) {UsesBursts[x] = false;}
+           DACValues[x] = RestingVoltage[x];
+         }
+         dacWrite(DACValues);
+        } break;
+        
+        // Program the module - one parameter
+        case 74: {
+          inByte2 = SerialReadByte();
+          inByte3 = SerialReadByte(); // inByte3 = channel (1-4)
+          inByte3 = inByte3 - 1; // Convert channel for zero-indexing
+          switch (inByte2) { 
+             case 1: {IsBiphasic[inByte3] = SerialReadByte();} break;
+             case 2: {Phase1Voltage[inByte3] = SerialReadByte();} break;
+             case 3: {Phase2Voltage[inByte3] = SerialReadByte();} break;
+             case 4: {Phase1Duration[inByte3] = SerialReadLong();} break;
+             case 5: {InterPhaseInterval[inByte3] = SerialReadLong();} break;
+             case 6: {Phase2Duration[inByte3] = SerialReadLong();} break;
+             case 7: {InterPulseInterval[inByte3] = SerialReadLong();} break;
+             case 8: {BurstDuration[inByte3] = SerialReadLong();} break;
+             case 9: {BurstInterval[inByte3] = SerialReadLong();} break;
+             case 10: {PulseTrainDuration[inByte3] = SerialReadLong();} break;
+             case 11: {PulseTrainDelay[inByte3] = SerialReadLong();} break;
+             case 12: {inByte4 = SerialReadByte(); TriggerAddress[0][inByte3] = inByte4;} break;
+             case 13: {inByte4 = SerialReadByte(); TriggerAddress[1][inByte3] = inByte4;} break;
+             case 14: {CustomTrainID[inByte3] = SerialReadByte();} break;
+             case 15: {CustomTrainTarget[inByte3] = SerialReadByte();} break;
+             case 16: {CustomTrainLoop[inByte3] = SerialReadByte();} break;
+             case 17: {RestingVoltage[inByte3] = SerialReadByte();} break;
+             case 128: {TriggerMode[inByte3] = SerialReadByte();} break;
+          }
+          if (inByte2 < 14) {
+            if ((BurstDuration[inByte3] == 0) || (BurstInterval[inByte3] == 0)) {UsesBursts[inByte3] = false;} else {UsesBursts[inByte3] = true;}
+            if (CustomTrainTarget[inByte3] == 1) {UsesBursts[inByte3] = true;}
+            if ((CustomTrainID[inByte3] > 0) && (CustomTrainTarget[inByte3] == 0)) {UsesBursts[inByte3] = false;}
+          }
+          if (inByte2 == 17) {
+            DACValues[inByte3] = RestingVoltage[inByte3];
+            dacWrite(DACValues);
+          }
+          SerialUSB.write(1); // Send confirm byte
+        } break;
+  
+        // Program custom stimulus 1
+        case 75: {
+          USBPacketCorrectionByte = SerialReadByte();
+          CustomTrainNpulses[0] = SerialReadLong();
+          for (int x = 0; x < CustomTrainNpulses[0]; x++) {
+            CustomPulseTimes[0][x] = SerialReadLong();
+          }
+          for (int x = 0; x < CustomTrainNpulses[0]; x++) {
+            CustomVoltages[0][x] = SerialReadByte();
+          }
+          if (USBPacketCorrectionByte == 1) {
+            USBPacketCorrectionByte = 0;
+            CustomTrainNpulses[0] = CustomTrainNpulses[0]  - 1;
+          }
+          SerialUSB.write(1); // Send confirm byte
+        } break;
+        // Program custom stimulus 2
+        case 76: {
+          USBPacketCorrectionByte = SerialReadByte();
+          CustomTrainNpulses[1] = SerialReadLong();
+          for (int x = 0; x < CustomTrainNpulses[1]; x++) {
+            CustomPulseTimes[1][x] = SerialReadLong();
+          }
+          for (int x = 0; x < CustomTrainNpulses[1]; x++) {
+            CustomVoltages[1][x] = SerialReadByte();
+          }
+          if (USBPacketCorrectionByte == 1) {
+            USBPacketCorrectionByte = 0;
+            CustomTrainNpulses[1] = CustomTrainNpulses[1]  - 1;
+          }
+          SerialUSB.write(1); // Send confirm byte
+        } break;      
+        // Soft-trigger the module
+        case 77: {
+          inByte2 = SerialReadByte();
+          for (int x = 0; x < 4; x++) {
+            PreStimulusStatus[x] = bitRead(inByte2, x);
+            if (PreStimulusStatus[x] == 1) {
+              if ((CustomTrainID[x] != 0) && (CustomTrainTarget[x] == 1)) {BurstStatus[x] = 0;} else {
+                   BurstStatus[x] = 1; 
+              }
+            if (StimulatingState == 0) {ResetSystemTime(); StimulatingState = 2;}
+              PrePulseTrainTimestamps[x] = SystemTime;
             }
-            ByteCount++;
-        }
-      } break;
-      case 79: {
-        // Write specific voltage to output channel (not a pulse train) 
-        inByte = SerialReadByte();
-        inByte = inByte - 1; // Convert for zero-indexing
-        inByte2 = SerialReadByte();
-        DACValues[inByte] = inByte2;
-        dacWrite(DACValues);
-        SerialUSB.write(1); // Send confirm byte
-      } break;
-      case 80: { // Soft-abort ongoing stimulation without disconnecting from client
-       for (int x = 0; x < 4; x++) {
-        killChannel(x);
-      }
-      dacWrite(DACValues);
-     } break;
-     case 81: { // Disconnect from client and store params to EEPROM
-        ConnectedToApp = 0;
-        inMenu = 0;
-        for (int x = 0; x < 4; x++) {
+          }
+        } break;
+        case 78: { 
+          lcd.clear();
+           lcd.home(); 
+           byte ByteCount = 0;
+          // read all the available characters
+          inByte2 = SerialReadByte(); // Total length of message to follow (including newline)
+          while (ByteCount < inByte2) {
+              // display each character to the LCD
+              inByte = SerialReadByte();
+              if (inByte != 254) {
+                lcd.write(inByte);
+              } else {
+                lcd.setCursor(0, 1);
+              }
+              ByteCount++;
+          }
+        } break;
+        case 79: {
+          // Write specific voltage to output channel (not a pulse train) 
+          inByte = SerialReadByte();
+          inByte = inByte - 1; // Convert for zero-indexing
+          inByte2 = SerialReadByte();
+          DACValues[inByte] = inByte2;
+          dacWrite(DACValues);
+          SerialUSB.write(1); // Send confirm byte
+        } break;
+        case 80: { // Soft-abort ongoing stimulation without disconnecting from client
+         for (int x = 0; x < 4; x++) {
           killChannel(x);
         }
         dacWrite(DACValues);
-        // Store last program to EEPROM
-        write2Screen("Saving Settings",".");
-        EEPROM_address = 0;
-        for (int x = 0; x < 4; x++) {
-          PrepareOutputChannelMemoryPage1(x);
-          WriteEEPROMPage(PageBytes, 32, EEPROM_address);
-          EEPROM_address = EEPROM_address + 32;
-          PrepareOutputChannelMemoryPage2(x);
-          WriteEEPROMPage(PageBytes, 32, EEPROM_address);
-          EEPROM_address = EEPROM_address + 32;
-          switch (x) {
-            case 0: { write2Screen("Saving Settings",". .");} break;
-            case 1: { write2Screen("Saving Settings",". . .");} break;
-            case 2: { write2Screen("Saving Settings",". . . .");} break;
-            case 3: { write2Screen("Saving Settings",". . . . .");} break;
-          }
-          delay(100);
-        }
-        write2Screen("Saving Settings",". . . . . Done!");
-        delay(700);
-        for (int x = 0; x < 16; x++) {
-         CommanderString[x] = DefaultCommanderString[x];
-       } 
-        write2Screen(CommanderString," Click for menu");
        } break;
-       // Set free-run mode
-      case 82:{
-        inByte2 = SerialReadByte();
-        inByte2 = inByte2 - 1; // Convert for zero-indexing
-        inByte3 = SerialReadByte();
-        ContinuousLoopMode[inByte2] = inByte3;
-        SerialUSB.write(1);
-      } break;
-      case 83: { // Clear stored parameters from EEPROM
-       WipeEEPROM();
-       if (inMenu == 0) {
-        write2Screen(CommanderString," Click for menu");
-      } else {
-        inMenu = 1;
-        RefreshChannelMenu(SelectedChannel);
-      }
-     } break;
-     case 84: {
-        inByte2 = SerialReadByte();
-        EEPROM_address = inByte2;
-        nBytesToWrite = SerialReadByte();
-        for (int i = 0; i < nBytesToWrite; i++) {
-        PageBytes[i] = SerialReadByte();
+       case 81: { // Disconnect from client and store params to EEPROM
+          ConnectedToApp = 0;
+          inMenu = 0;
+          for (int x = 0; x < 4; x++) {
+            killChannel(x);
+          }
+          dacWrite(DACValues);
+          // Store last program to EEPROM
+          write2Screen("Saving Settings",".");
+          EEPROM_address = 0;
+          for (int x = 0; x < 4; x++) {
+            PrepareOutputChannelMemoryPage1(x);
+            WriteEEPROMPage(PageBytes, 32, EEPROM_address);
+            EEPROM_address = EEPROM_address + 32;
+            PrepareOutputChannelMemoryPage2(x);
+            WriteEEPROMPage(PageBytes, 32, EEPROM_address);
+            EEPROM_address = EEPROM_address + 32;
+            switch (x) {
+              case 0: { write2Screen("Saving Settings",". .");} break;
+              case 1: { write2Screen("Saving Settings",". . .");} break;
+              case 2: { write2Screen("Saving Settings",". . . .");} break;
+              case 3: { write2Screen("Saving Settings",". . . . .");} break;
+            }
+            delay(100);
+          }
+          write2Screen("Saving Settings",". . . . . Done!");
+          delay(700);
+          for (int x = 0; x < 16; x++) {
+           CommanderString[x] = DefaultCommanderString[x];
+         } 
+          write2Screen(CommanderString," Click for menu");
+         } break;
+         // Set free-run mode
+        case 82:{
+          inByte2 = SerialReadByte();
+          inByte2 = inByte2 - 1; // Convert for zero-indexing
+          inByte3 = SerialReadByte();
+          ContinuousLoopMode[inByte2] = inByte3;
+          SerialUSB.write(1);
+        } break;
+        case 83: { // Clear stored parameters from EEPROM
+         WipeEEPROM();
+         if (inMenu == 0) {
+          write2Screen(CommanderString," Click for menu");
+        } else {
+          inMenu = 1;
+          RefreshChannelMenu(SelectedChannel);
         }
-        WriteEEPROMPage(PageBytes, nBytesToWrite, EEPROM_address);
-        SerialUSB.write(1);
-      } break; 
-    case 85: {
-        inByte2 = SerialReadByte();
-        EEPROM_address = inByte2;
-        nBytesToRead = SerialReadByte();
-        for (int i = 0; i < nBytesToRead; i++) {
-         EEPROM_OutputValue = ReadEEPROM(EEPROM_address+i);
-         SerialUSB.write(EEPROM_OutputValue);
-        }
-      } break;
-      
-      case 86: { // Override IO Lines
-        inByte2 = SerialReadByte();
-        inByte3 = SerialReadByte();
-        pinMode(inByte2, OUTPUT); digitalWrite(inByte2, inByte3);
-      } break; 
-      
-      case 87: { // Direct Read IO Lines
-        inByte2 = SerialReadByte();
-        pinMode(inByte2, INPUT);
-        delayMicroseconds(10);
-        LogicLevel = digitalRead(inByte2);
-        SerialUSB.write(LogicLevel);
-      } break; 
-      case 88: { // Direct Read IO Lines as analog
-        inByte2 = SerialReadByte();
-        pinMode(inByte2, INPUT_ANALOG);
-        delay(10);
-        SensorValue = analogRead(inByte2);
-        SerialUSB.println(SensorValue);
-        pinMode(inByte2, OUTPUT);
-      } break;
-      case 89: { // Receive new CommanderString (displayed on top line of OLED, i.e. "MATLAB connected"
-        for (int x = 0; x < 6; x++) {
-          CommanderString[x] = SerialReadByte();
-        }
-        for (int x = 6; x < 16; x++) {
-          CommanderString[x] = ClientStringSuffix[x-6];
-        }
-        write2Screen(CommanderString," Click for menu");
-      } break;
+       } break;
+       case 84: {
+          inByte2 = SerialReadByte();
+          EEPROM_address = inByte2;
+          nBytesToWrite = SerialReadByte();
+          for (int i = 0; i < nBytesToWrite; i++) {
+          PageBytes[i] = SerialReadByte();
+          }
+          WriteEEPROMPage(PageBytes, nBytesToWrite, EEPROM_address);
+          SerialUSB.write(1);
+        } break; 
+      case 85: {
+          inByte2 = SerialReadByte();
+          EEPROM_address = inByte2;
+          nBytesToRead = SerialReadByte();
+          for (int i = 0; i < nBytesToRead; i++) {
+           EEPROM_OutputValue = ReadEEPROM(EEPROM_address+i);
+           SerialUSB.write(EEPROM_OutputValue);
+          }
+        } break;
+        
+        case 86: { // Override IO Lines
+          inByte2 = SerialReadByte();
+          inByte3 = SerialReadByte();
+          pinMode(inByte2, OUTPUT); digitalWrite(inByte2, inByte3);
+        } break; 
+        
+        case 87: { // Direct Read IO Lines
+          inByte2 = SerialReadByte();
+          pinMode(inByte2, INPUT);
+          delayMicroseconds(10);
+          LogicLevel = digitalRead(inByte2);
+          SerialUSB.write(LogicLevel);
+        } break; 
+        case 88: { // Direct Read IO Lines as analog
+          inByte2 = SerialReadByte();
+          pinMode(inByte2, INPUT_ANALOG);
+          delay(10);
+          SensorValue = analogRead(inByte2);
+          SerialUSB.println(SensorValue);
+          pinMode(inByte2, OUTPUT);
+        } break;
+        case 89: { // Receive new CommanderString (displayed on top line of OLED, i.e. "MATLAB connected"
+          for (int x = 0; x < 6; x++) {
+            CommanderString[x] = SerialReadByte();
+          }
+          for (int x = 6; x < 16; x++) {
+            CommanderString[x] = ClientStringSuffix[x-6];
+          }
+          write2Screen(CommanderString," Click for menu");
+        } break;
+       }
      }
-   }
+  }
 
     // Read values of trigger pins
     LineTriggerEvent[0] = 0; LineTriggerEvent[1] = 0;

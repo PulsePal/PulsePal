@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 function AbortPulsePal
 global PulsePalSystem;
-fwrite(PulsePalSystem.SerialPort,  char(80));
+fwrite(PulsePalSystem.SerialPort,  [PulsePalSystem.OpMenuByte 80], 'uint8');
 PulsePalDisplay('   PULSE TRAIN', '     ABORTED')
 pause(1);
 PulsePalDisplay('MATLAB Connected', ' Click for menu');

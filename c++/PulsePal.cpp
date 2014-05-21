@@ -109,9 +109,9 @@ void PulsePal::initialize()
 uint32_t PulsePal::getFirmwareVersion() // JS 1/30/2014
 {
     uint32_t firmwareVersion = 0;
-    uint8_t handshakeByte = 72;
     uint8_t responseBytes[5] = { 0 };
-    serial.writeByte(handshakeByte);
+	uint8_t handshakeMessage[2] = {213, 72};
+	serial.writeBytes(handshakeMessage, 2);
 		Sleep(100);
     serial.readBytes(responseBytes,5);
     firmwareVersion = makeLong(responseBytes[4], responseBytes[3], responseBytes[2], responseBytes[1]);
@@ -250,7 +250,7 @@ void PulsePal::program(uint8_t channel, uint8_t paramCode, uint32_t paramValue)
 {
     //std::cout << "sending 32-bit message" << std::endl;
 
-    uint8_t message1[3] = {74, paramCode, channel};
+    uint8_t message1[4] = {213, 74, paramCode, channel};
 
     uint8_t message2[4];
 
@@ -260,7 +260,7 @@ void PulsePal::program(uint8_t channel, uint8_t paramCode, uint32_t paramValue)
     message2[2] = (paramValue & 0xff0000) >> 16;
     message2[3] = (paramValue & 0xff00000) >> 24;
 
-    serial.writeBytes(message1, 3);
+    serial.writeBytes(message1, 4);
     serial.writeBytes(message2, 4);
 
     //std::cout << "Message 1: " << (int) message1[0] << " " << (int) message1[1] << " " << (int) message1[2] << std::endl;
@@ -273,9 +273,9 @@ void PulsePal::program(uint8_t channel, uint8_t paramCode, uint8_t paramValue)
 
     //std::cout << "sending 8-bit message" << std::endl;
 
-    uint8_t message1[3] = {74, paramCode, channel};
+    uint8_t message1[4] = {213, 74, paramCode, channel};
 
-    serial.writeBytes(message1, 3);
+    serial.writeBytes(message1, 4);
     serial.writeBytes(&paramValue, 1);
 
     //std::cout << "Message 1: " << (int) message1[0] << " " << (int) message1[1] << " " << (int) message1[2] << std::endl;
@@ -288,9 +288,9 @@ void PulsePal::triggerChannel(uint8_t chan)
 {
     const uint8_t code = 1 << (chan - 1);
 
-    uint8_t bytesToWrite[2] = {77, code};
+    uint8_t bytesToWrite[3] = {213, 77, code};
 
-    serial.writeBytes(bytesToWrite, 2);
+    serial.writeBytes(bytesToWrite, 3);
 }
 
 void PulsePal::triggerChannels(uint8_t channel1, uint8_t channel2, uint8_t channel3, uint8_t channel4) // JS 1/30/2014
@@ -301,9 +301,9 @@ void PulsePal::triggerChannels(uint8_t channel1, uint8_t channel2, uint8_t chann
     code = code + 4 * channel3;
     code = code + 8 * channel4;
 
-    uint8_t bytesToWrite[2] = { 77, code };
+    uint8_t bytesToWrite[3] = {213, 77, code };
 
-    serial.writeBytes(bytesToWrite, 2);
+    serial.writeBytes(bytesToWrite, 3);
 }
 
 void PulsePal::updateDisplay(string line1, string line2)
@@ -313,6 +313,7 @@ void PulsePal::updateDisplay(string line1, string line2)
     Message.append(line1);
     Message += 254;
     Message.append(line2);
+	Prefix += 213;
     Prefix += 78;
     Prefix += Message.size();
     Prefix.append(Message);
@@ -322,6 +323,7 @@ void PulsePal::updateDisplay(string line1, string line2)
 void PulsePal::setClientIDString(string idString)
 {
 	string Prefix;
+	Prefix += 213;
 	Prefix += 89;
 	int mSize = idString.size();
 	if (mSize == 6) {
@@ -337,26 +339,26 @@ void PulsePal::setFixedVoltage(uint8_t channel, float voltage) // JS 1/30/2014
 {
     uint8_t voltageByte = 0;
     voltageByte = voltageToByte(voltage);
-    uint8_t message1[3] = { 79, channel, voltageByte };
-    serial.writeBytes(message1, 3);
+    uint8_t message1[4] = { 213, 79, channel, voltageByte };
+    serial.writeBytes(message1, 4);
 }
 
 void PulsePal::abortPulseTrains() // JS 1/30/2014
 {
-    uint8_t message1 = 80;
-    serial.writeByte(message1);
+	uint8_t message1[2] = { 213, 80 };
+    serial.writeBytes(message1,2);
 }
 
 void PulsePal::disconnectClient() // JS 1/30/2014
 {
-    uint8_t message1 = 81;
-    serial.writeByte(message1);
+	uint8_t message1[2] = { 213, 81 };
+    serial.writeBytes(message1,2);
 }
 
 void PulsePal::setContinuousLoop(uint8_t channel, uint8_t state) // JS 1/30/2014
 {
-    uint8_t message1[3] = {82, channel, state};
-    serial.writeBytes(message1, 3);
+    uint8_t message1[4] = {213, 82, channel, state};
+    serial.writeBytes(message1, 4);
 }
 
 
@@ -393,7 +395,7 @@ uint8_t PulsePal::voltageToByte(float voltage)
 }
 
 void PulsePal::sendCustomPulseTrain(uint8_t ID, uint8_t nPulses, float customPulseTimes[], float customVoltages[]){
-    int nMessageBytes = (nPulses * 5) + 6;
+    int nMessageBytes = (nPulses * 5) + 7;
     // Convert voltages to bytes
     uint8_t voltageBytes[1000] = { 0 };
     float thisVoltage = 0;
@@ -413,20 +415,21 @@ void PulsePal::sendCustomPulseTrain(uint8_t ID, uint8_t nPulses, float customPul
         pulseTimeBytes[pos] = (uint8_t)(pulseTimeMicroseconds >> 24); pos++;
     }
     uint8_t *messageBytes = new uint8_t[nMessageBytes];
+	messageBytes[0] = 213;
     if (ID == 2) {
-        messageBytes[0] = 76; // Op code to program custom train 2
+        messageBytes[1] = 76; // Op code to program custom train 2
     }
     else {
-        messageBytes[0] = 75; // Op code to program custom train 1
+        messageBytes[1] = 75; // Op code to program custom train 1
     }
-    messageBytes[1] = 0; // USB packet correction byte
-    messageBytes[2] = (uint8_t)(nPulses);
-    messageBytes[3] = (uint8_t)(nPulses >> 8);
-    messageBytes[4] = (uint8_t)(nPulses >> 16);
-    messageBytes[5] = (uint8_t)(nPulses >> 24);
-    int timeDataEnd = 6 + (nPulses * 4);
-    for (int i = 6; i < timeDataEnd; i++){
-        messageBytes[i] = pulseTimeBytes[i - 6];
+    messageBytes[2] = 0; // USB packet correction byte
+    messageBytes[3] = (uint8_t)(nPulses);
+    messageBytes[4] = (uint8_t)(nPulses >> 8);
+    messageBytes[5] = (uint8_t)(nPulses >> 16);
+    messageBytes[6] = (uint8_t)(nPulses >> 24);
+    int timeDataEnd = 7 + (nPulses * 4);
+    for (int i = 7; i < timeDataEnd; i++){
+        messageBytes[i] = pulseTimeBytes[i - 7];
     }
     for (int i = timeDataEnd; i < nMessageBytes; i++){
         messageBytes[i] = voltageBytes[i - timeDataEnd];
@@ -435,9 +438,10 @@ void PulsePal::sendCustomPulseTrain(uint8_t ID, uint8_t nPulses, float customPul
 }
 
 void PulsePal::syncAllParams() {
-    uint8_t messageBytes[167] = { 0 };
-    messageBytes[0] = 73;
-    int pos = 1;
+    uint8_t messageBytes[168] = { 0 };
+	messageBytes[0] = 213;
+    messageBytes[1] = 73;
+    int pos = 2;
     uint32_t thisTime = 0;
     float thisVoltage = 0;
     uint8_t thisVoltageByte = 0;
@@ -516,5 +520,5 @@ void PulsePal::syncAllParams() {
         messageBytes[pos] = (uint8_t)currentInputParams[1].triggerMode; pos++;
         messageBytes[pos] = (uint8_t)currentInputParams[2].triggerMode; pos++;
 
-    serial.writeBytes(messageBytes, 167);
+    serial.writeBytes(messageBytes, 168);
 }

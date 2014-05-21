@@ -23,5 +23,5 @@ global PulsePalSystem
 Voltage = Voltage + 10;
 Voltage = Voltage / 20;
 VoltageOutput = uint8(Voltage*255);
-fwrite(PulsePalSystem.SerialPort, [char(79) char(ChannelID) char(VoltageOutput)]);
+fwrite(PulsePalSystem.SerialPort, [PulsePalSystem.OpMenuByte char(79) char(ChannelID) char(VoltageOutput)]);
 ConfirmByte = fread(PulsePalSystem.SerialPort,1);
