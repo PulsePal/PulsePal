@@ -22,11 +22,12 @@ function ConfirmBit = SendCustomWaveform(TrainID, SamplingPeriod, Voltages)
 global PulsePalSystem
 
 OriginalSamplingPeriod = SamplingPeriod;
-SamplingPeriod = SamplingPeriod*10000; % Convert to multiple of 100us
 
-if rem(SamplingPeriod, 1) > 0
-    error(['Error: sampling period must be a multiple of ' num2str(PulsePalSystem.CycleDuration) ' microseconds'])
+if rem(round(SamplingPeriod*1000000), PulsePalSystem.MinPulseDuration) > 0
+        error(['Error: sampling period must be a multiple of ' num2str(PulsePalSystem.MinPulseDuration) ' microseconds.']);
 end
+
+SamplingPeriod = SamplingPeriod*PulsePalSystem.CycleFrequency; % Convert to multiple of cycle frequency
 PulseTimes = 0:SamplingPeriod:((length(Voltages)*SamplingPeriod)-1);
 
 nPulses = length(PulseTimes);

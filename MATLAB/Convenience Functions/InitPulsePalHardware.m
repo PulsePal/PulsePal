@@ -117,11 +117,14 @@ if HandShakeOkByte == 75
     PulsePalSystem.FirmwareVersion = fread(PulsePalSystem.SerialPort, 1, 'uint32');
     switch PulsePalSystem.FirmwareVersion
         case 2
-            PulsePalSystem.CycleDuration = 100; % Loops every 100us
+            PulsePalSystem.CycleFrequency = round(20000); % Loops x 20k/sec
+            PulsePalSystem.MinPulseDuration = round(100); % Minimum user settable pulse duration in microseconds
         case 3
-            PulsePalSystem.CycleDuration = 100; % Loops every 100us
+            PulsePalSystem.CycleFrequency = round(20000); % Loops x 20k/sec
+            PulsePalSystem.MinPulseDuration = round(100); % Minimum user settable pulse duration in microseconds
         case 4
-            PulsePalSystem.CycleDuration = 100; % Loops every 100us
+            PulsePalSystem.CycleFrequency = round(20000); % Loops x 20k/sec
+            PulsePalSystem.MinPulseDuration = round(100); % Minimum user settable pulse duration in microseconds
     end
 else
     disp('Error: Pulse Pal returned an incorrect handshake signature.')

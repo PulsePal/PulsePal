@@ -27,6 +27,7 @@ class PulsePalObject(object):
         self.serialObject = 0
         self.OpMenuByte = 213
         self.firmwareVersion = 0
+        self.cycleFrequency = 20000;
         self.isBiphasic = [0]*5;
         self.phase1Voltage = [5]*5;
         self.phase2Voltage = [-5]*5;
@@ -78,7 +79,7 @@ class PulsePalObject(object):
         if paramCode == 17:
             value = math.ceil(((value+10)/float(20))*255) # Convert volts to bits
         if 4 <= paramCode <= 11:
-            programByteString = struct.pack('<BBBBL',self.OpMenuByte,74,paramCode,channel,value*10000)
+            programByteString = struct.pack('<BBBBL',self.OpMenuByte,74,paramCode,channel,value*self.cycleFrequency)
         else:
             programByteString = struct.pack('BBBBB',self.OpMenuByte,74,paramCode,channel,value)
         self.serialObject.write(programByteString)
@@ -137,14 +138,14 @@ class PulsePalObject(object):
         # Add 32-bit time params
         programValues = [0]*32; pos = 0
         for i in range(1,5):
-            programValues[pos] = self.phase1Duration[i]*10000; pos+=1
-            programValues[pos] = self.interPhaseInterval[i]*10000; pos+=1
-            programValues[pos] = self.phase2Duration[i]*10000; pos+=1
-            programValues[pos] = self.interPulseInterval[i]*10000; pos+=1
-            programValues[pos] = self.burstDuration[i]*10000; pos+=1
-            programValues[pos] = self.interBurstInterval[i]*10000; pos+=1
-            programValues[pos] = self.pulseTrainDuration[i]*10000; pos+=1
-            programValues[pos] = self.pulseTrainDelay[i]*10000; pos+=1
+            programValues[pos] = self.phase1Duration[i]*self.cycleFrequency; pos+=1
+            programValues[pos] = self.interPhaseInterval[i]*self.cycleFrequency; pos+=1
+            programValues[pos] = self.phase2Duration[i]*self.cycleFrequency; pos+=1
+            programValues[pos] = self.interPulseInterval[i]*self.cycleFrequency; pos+=1
+            programValues[pos] = self.burstDuration[i]*self.cycleFrequency; pos+=1
+            programValues[pos] = self.interBurstInterval[i]*self.cycleFrequency; pos+=1
+            programValues[pos] = self.pulseTrainDuration[i]*self.cycleFrequency; pos+=1
+            programValues[pos] = self.pulseTrainDelay[i]*self.cycleFrequency; pos+=1
         # Pack 32-bit times to bytes and append to program byte-string
         programByteString = programByteString + struct.pack('<LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL' , *programValues)
         
@@ -182,7 +183,7 @@ class PulsePalObject(object):
     def sendCustomPulseTrain(self, customTrainID, pulseTimes, pulseVoltages):
         nPulses = len(pulseTimes) 
         for i in range(0,nPulses):
-            pulseTimes[i] = pulseTimes[i]*10000 # Convert seconds to multiples of minimum cycle (100us)
+            pulseTimes[i] = pulseTimes[i]*self.cycleFrequency # Convert seconds to multiples of minimum cycle (100us)
             pulseVoltages[i] = math.ceil(((pulseVoltages[i]+10)/float(20))*255) # Convert volts to bytes
         if customTrainID == 1:
             messageBytes = struct.pack('BB', self.OpMenuByte , 75) # Op code for programming train 1
@@ -196,7 +197,7 @@ class PulsePalObject(object):
     def sendCustomWaveform(self, customTrainID, pulseWidth, pulseVoltages): # For custom pulse trains with pulse times = pulse width
         nPulses = len(pulseVoltages)
         pulseTimes = [0]*nPulses
-        pulseWidth = pulseWidth*10000 # Convert seconds to to multiples of minimum cycle (100us)         
+        pulseWidth = pulseWidth*self.cycleFrequency # Convert seconds to to multiples of minimum cycle (100us)         
         for i in range(0,nPulses):
             pulseTimes[i] = pulseWidth*i # Add consecutive pulse
             pulseVoltages[i] = math.ceil(((pulseVoltages[i]+10)/float(20))*255) # Convert volts to bytes

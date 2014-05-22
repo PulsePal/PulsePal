@@ -25,7 +25,8 @@ classdef PulsePalObject < handle
         Graphics
         FirmwareVersion
         OS
-        CycleDuration
+        MinPulseDuration
+        CycleFrequency
         CurrentProgram
         PulsePalPath
         SerialPort

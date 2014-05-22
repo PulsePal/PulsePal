@@ -31,7 +31,12 @@ if nPulses > 1000
 end
 
 % Sanity-check PulseTimes and voltages
-CandidateTimes = uint32(PulseTimes*1000000);
+
+if sum(sum(rem(round(PulseTimes*1000000), PulsePalSystem.MinPulseDuration))) > 0
+        error(['Non-zero time values for Pulse Pal rev0.4 must be multiples of ' num2str(PulsePalSystem.MinPulseDuration) ' microseconds.']);
+end
+
+CandidateTimes = uint32(PulseTimes*PulsePalSystem.CycleFrequency);
 CandidateVoltages = Voltages;
 if (sum(CandidateTimes < 0) > 0)  
     error('Error: Custom pulse times must be positive');
@@ -39,10 +44,7 @@ end
 if ~IsTimeSequence(CandidateTimes)  
     error('Error: Custom pulse times must always increase');
 end
-if (sum(rem(CandidateTimes,1) > 0))  
-    errordlg(['Non-zero time values for Pulse Pal rev0.4 must be multiples of ' num2str(PulsePalSystem.CycleDuration) ' microseconds.'], 'Error');
-end
-if (CandidateTimes(length(CandidateTimes)) > 3600000000) 
+if (CandidateTimes(end) > (3600*PulsePalSystem.CycleFrequency)) 
     0; error('Error: Custom pulse times must be < 3600 s');
 end
 if (sum(abs(CandidateVoltages) > 10) > 0) 
@@ -51,10 +53,10 @@ end
 if (length(CandidateVoltages) ~= length(CandidateTimes)) 
     error('Error: There must be a voltage for every timestamp');
 end
-Output = uint32(PulseTimes*10000); % Convert to multiple of 100us
-if (length(unique(Output)) ~= length(Output))
+if (length(unique(CandidateTimes)) ~= length(CandidateTimes))
     error('Error: Duplicate custom pulse times detected');
 end
+TimeOutput = CandidateTimes;
 Voltages = Voltages + 10;
 Voltages = Voltages / 20;
 VoltageOutput = uint8(Voltages*255);
@@ -79,7 +81,7 @@ if strcmp(PulsePalSystem.OS, 'Microsoft Windows XP')
 if nPulses < 200
     USBPacketLengthCorrectionByte = uint8((rem(nPulses, 16) == 0));
 else
-    nFullPackets = ceil(length(Output)/200) - 1;
+    nFullPackets = ceil(length(TimeOutput)/200) - 1;
     RemainderMessageLength = nPulses - (nFullPackets*200);
     if  uint8((rem(RemainderMessageLength, 16) == 0)) || (uint8((rem(nPulses, 16) == 0)))
         USBPacketLengthCorrectionByte = 1;
@@ -95,23 +97,23 @@ end
     ByteString = [PulsePalSystem.OpMenuByte OpCode USBPacketLengthCorrectionByte typecast(nPulsesByte, 'uint8')]; 
     fwrite(PulsePalSystem.SerialPort, ByteString, 'uint8');
     % Send PulseTimes
-    nPackets = ceil(length(Output)/200);
+    nPackets = ceil(length(TimeOutput)/200);
     Ind = 1;
     if nPackets > 1
         for x = 1:nPackets-1
-            fwrite(PulsePalSystem.SerialPort, Output(Ind:Ind+199), 'uint32');
+            fwrite(PulsePalSystem.SerialPort, TimeOutput(Ind:Ind+199), 'uint32');
             Ind = Ind + 200;
         end
         if USBPacketLengthCorrectionByte == 1
-            fwrite(PulsePalSystem.SerialPort, [Output(Ind:length(Output)) 5], 'uint32');
+            fwrite(PulsePalSystem.SerialPort, [TimeOutput(Ind:length(TimeOutput)) 5], 'uint32');
         else
-            fwrite(PulsePalSystem.SerialPort, Output(Ind:length(Output)), 'uint32');
+            fwrite(PulsePalSystem.SerialPort, TimeOutput(Ind:length(TimeOutput)), 'uint32');
         end
     else
         if USBPacketLengthCorrectionByte == 1
-            fwrite(PulsePalSystem.SerialPort, [Output 5], 'uint32');
+            fwrite(PulsePalSystem.SerialPort, [TimeOutput 5], 'uint32');
         else
-            fwrite(PulsePalSystem.SerialPort, Output, 'uint32');
+            fwrite(PulsePalSystem.SerialPort, TimeOutput, 'uint32');
         end
     end
     
@@ -133,7 +135,7 @@ end
     
 else % This is the normal transmission scheme, as a single bytestring
     nPulsesByte = uint32(nPulses);
-    ByteString = [PulsePalSystem.OpMenuByte OpCode 0 typecast(nPulsesByte, 'uint8') typecast(Output, 'uint8') VoltageOutput];
+    ByteString = [PulsePalSystem.OpMenuByte OpCode 0 typecast(nPulsesByte, 'uint8') typecast(TimeOutput, 'uint8') VoltageOutput];
     fwrite(PulsePalSystem.SerialPort, ByteString, 'uint8');
 end
 

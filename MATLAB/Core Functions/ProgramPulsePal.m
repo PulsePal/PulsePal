@@ -101,12 +101,16 @@ global PulsePalSystem;
     
     
     % Convert time data to microseconds
-    TimeData = uint32(cell2mat(ProgramMatrix(5:12, 2:5))*10000); % Convert to multiple of 100us
+    TimeData = cell2mat(ProgramMatrix(5:12, 2:5));
     
     % Ensure time data is within range
-    if sum(sum(rem(TimeData, 1))) > 0
-        errordlg(['Non-zero time values for Pulse Pal rev0.4 must be multiples of ' num2str(PulsePalSystem.CycleDuration) ' microseconds. Please check your program matrix.'], 'Invalid program');
+    if sum(sum(rem(round(TimeData*1000000), PulsePalSystem.MinPulseDuration))) > 0
+        errordlg(['Non-zero time values for Pulse Pal rev0.4 must be multiples of ' num2str(PulsePalSystem.MinPulseDuration) ' microseconds. Please check your program matrix.'], 'Invalid program');
     end
+    
+    TimeData = uint32(TimeData*PulsePalSystem.CycleFrequency); % Convert to multiple of cycle frequency
+    
+    
     
     % Arrange program into a single byte-string
     FormattedProgramTimestamps = TimeData(1:end); 

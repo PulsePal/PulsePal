@@ -78,8 +78,7 @@ byte DACLatchPin=5;
 byte USBPacketCorrectionByte = 0; // If messages sent over USB in Windows XP are 64 bytes, the system crashes - so this variable keeps track of whether to chop off a junk byte at the end of the message. Used for custom stimuli.
 HardwareSPI spi(1);
 HardwareSPI EEPROM(2);
-byte CycleDuration = 100;
-byte HalfCycle = CycleDuration/2;
+byte CycleDuration = 50; unsigned int CycleFrequency = 20000;
 
 // Variables related to EEPROM
 byte PageBytes[32] = {0}; // Stores page to be written
@@ -154,7 +153,9 @@ boolean InputValuesLastCycle[2] = {0}; // The values on the last cycle. Used to 
 boolean LineTriggerEvent[2] = {0}; // 0 if no line trigger event detected, 1 if present.
 unsigned long InputLineDebounceTimestamp[2] = {0}; // Last time the line went from high to low
 boolean UsesBursts[4] = {0};
+unsigned long PulseDuration[4] = {0}; // Duration of a pulse (sum of 3 phases for biphasic pulse)
 boolean IsBiphasic[4] = {0};
+boolean IsCustomBurstTrain[4] = {0};
 boolean ContinuousLoopMode[4] = {0}; // If true, the channel loops its programmed stimulus train continuously
 int AnalogValues[2] = {0};
 int SensorValue = 0;
@@ -227,20 +228,15 @@ void setup() {
     LastLoopTime = SystemTime;
     DefaultInputLevel = 1 - TriggerLevel;
     Timer2.setChannel1Mode(TIMER_OUTPUTCOMPARE);
-    Timer2.setPeriod(50); // in microseconds
+    //Timer2.setPeriod(CycleDuration); // in microseconds
+    Timer2.setPrescaleFactor(1800);
+    Timer2.setOverflow(1);
     Timer2.setCompare1(1);      // overflow might be small
     Timer2.attachCompare1Interrupt(handler);
 }
 
 void loop() {
-  if (StimulatingState == 0) {
-    if (LastStimulatingState != 0) {
-       Timer2.pause();
-       Timer2.setPeriod(50); // in microseconds
-       Timer2.refresh();
-       Timer2.resume();
-     }
-  }
+
 }
 
 void handler(void) {
@@ -254,13 +250,10 @@ void handler(void) {
       UpdateSettingsMenu();
       SystemTime = 0;
    } else {
-     if (StimulatingState == 2) {
-       Timer2.pause();
-       Timer2.setPeriod(100); // in microseconds
-       Timer2.refresh();
-       Timer2.resume();
-       StimulatingState = 1;
-     }
+//     if (StimulatingState == 2) {
+//                // Place to include first-cycle operations
+//     }
+     StimulatingState = 1;
      dacWrite(DACValues); // Update DAC
      SystemTime++; // Increment system time (# of cycles since stim start)
      ClickerButtonState = digitalRead(ClickerButtonLine);
@@ -316,6 +309,12 @@ void handler(void) {
            if ((BurstDuration[x] == 0) || (BurstInterval[x] == 0)) {UsesBursts[x] = false;} else {UsesBursts[x] = true;}
            if (CustomTrainTarget[x] == 1) {UsesBursts[x] = true;}
            if ((CustomTrainID[x] > 0) && (CustomTrainTarget[x] == 0)) {UsesBursts[x] = false;}
+           PulseDuration[x] = ComputePulseDuration(IsBiphasic[x], Phase1Duration[x], InterPhaseInterval[x], Phase2Duration[x]);
+           if ((CustomTrainID[x] > 0) && (CustomTrainTarget[x] == 1)) {
+            IsCustomBurstTrain[x] = 1;
+           } else {
+            IsCustomBurstTrain[x] = 0;
+           }
            DACValues[x] = RestingVoltage[x];
          }
          dacWrite(DACValues);
@@ -354,6 +353,12 @@ void handler(void) {
           if (inByte2 == 17) {
             DACValues[inByte3] = RestingVoltage[inByte3];
             dacWrite(DACValues);
+          }
+          PulseDuration[inByte3] = ComputePulseDuration(IsBiphasic[inByte3], Phase1Duration[inByte3], InterPhaseInterval[inByte3], Phase2Duration[inByte3]);
+          if ((CustomTrainID[inByte3] > 0) && (CustomTrainTarget[inByte3] == 1)) {
+            IsCustomBurstTrain[inByte3] = 1;
+          } else {
+            IsCustomBurstTrain[inByte3] = 0;
           }
           SerialUSB.write(1); // Send confirm byte
         } break;
@@ -641,18 +646,18 @@ void handler(void) {
             if ((CustomTrainID[x] == 0) || ((CustomTrainID[x] > 0) && (CustomTrainTarget[x] == 1))) {
               if (SystemTime == NextPulseTransitionTime[x]) {
                 NextPulseTransitionTime[x] = SystemTime + Phase1Duration[x];
-                if ((NextPulseTransitionTime[x] - SystemTime) <= (StimulusTrainEndTime[x] - SystemTime)) { // so that it doesn't start a pulse it can't finish due to pulse train end
-                  if (!((UsesBursts[x] == 1) && (NextPulseTransitionTime[x] >= NextBurstTransitionTime[x]))){ // so that it doesn't start a pulse it can't finish due to burst end
-                    PulseStatus[x] = 1;
-                    gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], HIGH);
-                    if ((CustomTrainID[x] > 0) && (CustomTrainTarget[x] == 1)) {
-                      DACValues[x] = CustomVoltages[thisTrainIDIndex][CustomPulseTimeIndex[x]];
-                    } else {
-                      DACValues[x] = Phase1Voltage[x]; 
+                if ((IsCustomBurstTrain[x] == 1) || (PulseDuration[x] + SystemTime) <= StimulusTrainEndTime[x]) { // so that it doesn't start a pulse it can't finish due to pulse train end
+                    if (!((UsesBursts[x] == 1) && (NextPulseTransitionTime[x] >= NextBurstTransitionTime[x]))){ // so that it doesn't start a pulse it can't finish due to burst end
+                      PulseStatus[x] = 1;
+                      gpio_write_bit(LED_PIN_PORT, OutputLEDLineBits[x], HIGH);
+                      if ((CustomTrainID[x] > 0) && (CustomTrainTarget[x] == 1)) {
+                        DACValues[x] = CustomVoltages[thisTrainIDIndex][CustomPulseTimeIndex[x]];
+                      } else {
+                        DACValues[x] = Phase1Voltage[x]; 
+                      }
                     }
                   }
                  }
-                }
               } else {
                if (SystemTime == NextPulseTransitionTime[x]) {
                      int SkipNextInterval = 0;
@@ -861,8 +866,8 @@ void handler(void) {
         // Determine if Stimulus Status should go to 0 now
         if ((SystemTime == StimulusTrainEndTime[x]) && (StimulusStatus[x] == 1)) {
           if (((CustomTrainID[x] > 0) && (CustomTrainLoop[x] == 1)) || (CustomTrainID[x] == 0)) {
-          if (ContinuousLoopMode[x] == false) {
-              killChannel(x);
+            if (ContinuousLoopMode[x] == false) {
+                killChannel(x);
             }
           }
         }
@@ -996,7 +1001,8 @@ void UpdateSettingsMenu() {
                     } break; // Follow input 2 (on/off)
           case 15: {CustomTrainID[SelectedChannel-1] = ReturnUserValue(0, 2, 1, 0);} break; // stimulus train duration
           case 16: {CustomTrainTarget[SelectedChannel-1] = ReturnUserValue(0,1,1,4);} break; // Custom stim target (Pulses / Bursts)
-          case 17: {RestingVoltage[SelectedChannel-1] = ReturnUserValue(0, 255, 1, 2); // Get user to input resting voltage
+          case 17: {
+                    RestingVoltage[SelectedChannel-1] = ReturnUserValue(0, 255, 1, 2); // Get user to input resting voltage
                     DACValues[SelectedChannel-1] = RestingVoltage[SelectedChannel-1]; dacWrite(DACValues); // Update DAC
                     } break; 
           case 18: {
@@ -1004,6 +1010,8 @@ void UpdateSettingsMenu() {
           inMenu = 1; RefreshChannelMenu(SelectedChannel);
           } break;
          }
+         PulseDuration[SelectedChannel-1] = ComputePulseDuration(IsBiphasic[SelectedChannel-1], Phase1Duration[SelectedChannel-1], InterPhaseInterval[SelectedChannel-1], Phase2Duration[SelectedChannel-1]);
+         if (BurstDuration[SelectedChannel-1] == 0) {UsesBursts[SelectedChannel-1] = false;} else {UsesBursts[SelectedChannel-1] = true;}
          if ((SelectedAction > 1) && (SelectedAction < 9)) {
           //EEPROM update channel timer values
           PrepareOutputChannelMemoryPage1(SelectedChannel-1);
@@ -1277,7 +1285,7 @@ const char* FormatNumberForDisplay(unsigned int InputNumber, int Units) {
 unsigned int Bits2Display = InputNumber;
 double InputNum = double(InputNumber);
   if (Units == 1) {
-  InputNum = InputNum/10000;
+  InputNum = InputNum/CycleFrequency;
   }
 if (Units == 2) {
   // Convert volts from bytes to volts
@@ -1409,7 +1417,7 @@ unsigned int ReturnUserValue(unsigned int LowerLimit, unsigned int UpperLimit, u
     // Read digits from User Value
     int x = 0;
     if (Units == 1) {
-      //UVTemp = UVTemp / 10;
+      UVTemp = UVTemp / 2;
       while (UVTemp > 0) {
         Digits[7-x] = (UVTemp % 10);
         UVTemp = UVTemp / 10;
@@ -1470,7 +1478,7 @@ unsigned int ReturnUserValue(unsigned int LowerLimit, unsigned int UpperLimit, u
             } break;
             case 1: {
                 if ((Digits[CursorPos] < 9) && (UserValue < UpperLimit)) {
-                 UserValue = UserValue + pow(10, ((5-CursorPos)+2));
+                 UserValue = UserValue + 2*(pow(10, ((5-CursorPos)+2)));
                  Digits[CursorPos] = Digits[CursorPos] + 1;
                 }
             } break;
@@ -1512,7 +1520,7 @@ unsigned int ReturnUserValue(unsigned int LowerLimit, unsigned int UpperLimit, u
             } break;
             case 1: {
                 if (Digits[CursorPos] > 0)  {
-                 UserValue = UserValue - pow(10, ((5-CursorPos)+2));
+                 UserValue = UserValue - 2*(pow(10, ((5-CursorPos)+2)));
                   Digits[CursorPos] = Digits[CursorPos] - 1;
                 }
             } break;
@@ -1563,10 +1571,6 @@ unsigned int ReturnUserValue(unsigned int LowerLimit, unsigned int UpperLimit, u
        }
      delay(ScrollSpeedDelay);  
      }
-     // If the system now uses bursts, update UsesBursts param
-     for (int x = 0; x < 4; x++) {
-              if (BurstDuration[x] == 0) {UsesBursts[x] = false;} else {UsesBursts[x] = true;}
-            }
      lcd.noCursor();
      lcd.setCursor(0, 1); lcd.print("                ");
      if (Units == 5) {
@@ -1953,4 +1957,14 @@ void AbortAllPulseTrains() {
 
 void ResetSystemTime() {
   SystemTime = 0;
+}
+
+unsigned long ComputePulseDuration(byte myBiphasic, unsigned long myPhase1, unsigned long myPhaseInterval, unsigned long myPhase2) {
+    unsigned long Duration = 0;
+    if (myBiphasic == 0) {
+       Duration = myPhase1;
+     } else {
+       Duration = myPhase1 + myPhaseInterval + myPhase2;
+     }
+     return Duration;
 }

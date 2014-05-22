@@ -84,10 +84,10 @@ end
 
 % Sanity-check time data
 if isTimeData
-    ParamValue = round(ParamValue*10000); % Convert to multiple of 100us
-    if rem(ParamValue, 1) > 0
-        errordlg(['Non-zero time values for Pulse Pal rev0.4 must be multiples of ' num2str(PulsePalSystem.CycleDuration) ' microseconds.'], 'Error');
+    if sum(sum(rem(round(ParamValue*1000000), PulsePalSystem.MinPulseDuration))) > 0
+        error(['Non-zero time values for Pulse Pal rev0.4 must be multiples of ' num2str(PulsePalSystem.MinPulseDuration) ' microseconds.']);
     end
+    ParamValue = round(ParamValue*PulsePalSystem.CycleFrequency); % Convert to multiple of 100us
 end
 
 
