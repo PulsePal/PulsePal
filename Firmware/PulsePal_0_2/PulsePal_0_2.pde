@@ -982,15 +982,15 @@ void UpdateSettingsMenu() {
           } break;
           case 2: {IsBiphasic[SelectedChannel-1] = ReturnUserValue(0, 1, 1, 3);} break; // biphasic (on /off)
           case 3: {Phase1Voltage[SelectedChannel-1] = ReturnUserValue(0, 255, 1, 2);} break; // Get user to input phase 1 voltage
-          case 4: {Phase1Duration[SelectedChannel-1] = ReturnUserValue(1, 36000000, 1, 1);} break; // phase 1 duration
-          case 5: {InterPhaseInterval[SelectedChannel-1] = ReturnUserValue(1, 36000000, 1, 1);} break; // inter-phase interval
+          case 4: {Phase1Duration[SelectedChannel-1] = ReturnUserValue(1, 72000000, 1, 1);} break; // phase 1 duration
+          case 5: {InterPhaseInterval[SelectedChannel-1] = ReturnUserValue(1, 72000000, 1, 1);} break; // inter-phase interval
           case 6: {Phase2Voltage[SelectedChannel-1] = ReturnUserValue(0, 255, 1, 2);} break; // Get user to input phase 2 voltage
-          case 7: {Phase2Duration[SelectedChannel-1] = ReturnUserValue(1, 36000000, 1, 1);} break; // phase 2 duration
-          case 8: {InterPulseInterval[SelectedChannel-1] = ReturnUserValue(1, 36000000, 1, 1);} break; // pulse interval
-          case 9: {BurstDuration[SelectedChannel-1] = ReturnUserValue(1, 36000000, 1, 1);} break; // burst width
-          case 10: {BurstInterval[SelectedChannel-1] = ReturnUserValue(1, 36000000, 1, 1);} break; // burst interval
-          case 11: {PulseTrainDelay[SelectedChannel-1] = ReturnUserValue(1, 36000000, 1, 1);} break; // stimulus train delay
-          case 12: {PulseTrainDuration[SelectedChannel-1] = ReturnUserValue(1, 36000000, 1, 1);} break; // stimulus train duration
+          case 7: {Phase2Duration[SelectedChannel-1] = ReturnUserValue(1, 72000000, 1, 1);} break; // phase 2 duration
+          case 8: {InterPulseInterval[SelectedChannel-1] = ReturnUserValue(1, 72000000, 1, 1);} break; // pulse interval
+          case 9: {BurstDuration[SelectedChannel-1] = ReturnUserValue(1, 72000000, 1, 1);} break; // burst width
+          case 10: {BurstInterval[SelectedChannel-1] = ReturnUserValue(1, 72000000, 1, 1);} break; // burst interval
+          case 11: {PulseTrainDelay[SelectedChannel-1] = ReturnUserValue(1, 72000000, 1, 1);} break; // stimulus train delay
+          case 12: {PulseTrainDuration[SelectedChannel-1] = ReturnUserValue(1, 72000000, 1, 1);} break; // stimulus train duration
           case 13: {byte Bit2Write = ReturnUserValue(0, 1, 1, 3);
                     byte Ch = SelectedChannel-1;
                     TriggerAddress[0][Ch] = Bit2Write;
@@ -1374,9 +1374,10 @@ boolean ReadDebouncedButton() {
    
 }
 
-unsigned int ReturnUserValue(unsigned int LowerLimit, unsigned int UpperLimit, unsigned int StepSize, byte Units) {
+unsigned int ReturnUserValue(unsigned long LowerLimit, unsigned long UpperLimit, unsigned long StepSize, byte Units) {
       // This function returns a value that the user chooses by scrolling up and down a number list with the joystick, and clicks to select the desired number.
       // LowerLimit and UpperLimit are the limits for this selection, StepSize is the smallest step size the system will scroll. Units (as for Write2Screen) codes none=0, time=1, volts=2 True/False=3
+     unsigned long ValueToAdd = 0;
      switch (SelectedAction) {
        case 2:{UserValue = IsBiphasic[SelectedChannel-1];} break;
        case 3:{UserValue = Phase1Voltage[SelectedChannel-1];} break;
@@ -1477,8 +1478,9 @@ unsigned int ReturnUserValue(unsigned int LowerLimit, unsigned int UpperLimit, u
               }
             } break;
             case 1: {
-                if ((Digits[CursorPos] < 9) && (UserValue < UpperLimit)) {
-                 UserValue = UserValue + 2*(pow(10, ((5-CursorPos)+2)));
+                ValueToAdd = 2*(pow(10, ((5-CursorPos)+2)));
+                if ((Digits[CursorPos] < 9) && ((UserValue+ValueToAdd) <= UpperLimit)) {
+                 UserValue = UserValue + ValueToAdd;
                  Digits[CursorPos] = Digits[CursorPos] + 1;
                 }
             } break;
