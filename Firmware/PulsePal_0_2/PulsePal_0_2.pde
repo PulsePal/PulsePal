@@ -1857,13 +1857,13 @@ void WipeEEPROM() {
 void LoadDefaultParameters() {
   // This function is called on boot if the EEPROM has an invalid program (or no program).
   for (int x = 0; x < 4; x++) {
-      Phase1Duration[x] = 1;
-      InterPhaseInterval[x] = 1;
-      Phase2Duration[x] = 1;
-      InterPulseInterval[x] = 10;
+      Phase1Duration[x] = 2;
+      InterPhaseInterval[x] = 2;
+      Phase2Duration[x] = 2;
+      InterPulseInterval[x] = 20;
       BurstDuration[x] = 0;
       BurstInterval[x] = 0;
-      PulseTrainDuration[x] = 10000;
+      PulseTrainDuration[x] = 20000;
       PulseTrainDelay[x] = 0;
       IsBiphasic[x] = 0;
       Phase1Voltage[x] = 192;

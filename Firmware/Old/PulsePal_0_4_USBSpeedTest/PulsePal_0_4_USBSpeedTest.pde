@@ -49,10 +49,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 // Trigger line level configuration (0 = default high, trigger low (versions with optocoupler). 1 = default low, trigger high.)
 #define TriggerLevel 0
-#define ClickerButtonLogicHigh 1
+#define ClickerButtonLogicHigh 0
 
 // Firmware build number
-unsigned long FirmwareVersion = 2;
+unsigned long FirmwareVersion = 4;
 
 // initialize LCD library with the numbers of the interface pins
 // Pins matched with hello world LCD sketch
@@ -177,9 +177,9 @@ int lastDebounceTime = 0; // to debounce the joystick button
 boolean lastButtonState = 0;
 boolean ChoiceMade = 0; // determines whether user has chosen a value from a list
 unsigned int UserValue = 0; // The current value displayed on a list of values (written to LCD when choosing parameters)
-char CommanderString[16] = " PULSE PAL v0.3";
+char CommanderString[16] = " PULSE PAL v0.4";
 char ClientStringSuffix[11] = " Connected";
-char DefaultCommanderString[16] = " PULSE PAL v0.3";
+char DefaultCommanderString[16] = " PULSE PAL v0.4";
 byte ValidEEPROMProgram = 0; // A byte read from EEPROM. This is always 1 if the EEPROM has been written to. Used to load defaults on first-time use.
 void handler(void);
 
@@ -264,6 +264,8 @@ void handler(void) {
   LastStimulatingState = StimulatingState;
       
   if (SerialUSB.available() > 0) {
+    DACValues[0] = 192;
+    dacWrite(DACValues);
     CommandByte = SerialUSB.read();
     if (CommandByte == OpMenuByte) {
       CommandByte = SerialReadByte();
@@ -317,6 +319,7 @@ void handler(void) {
            }
            DACValues[x] = RestingVoltage[x];
          }
+         DACValues[0] = 128;
          dacWrite(DACValues);
         } break;
         
@@ -361,6 +364,8 @@ void handler(void) {
             IsCustomBurstTrain[inByte3] = 0;
           }
           SerialUSB.write(1); // Send confirm byte
+          DACValues[0] = 128;
+          dacWrite(DACValues);
         } break;
   
         // Program custom stimulus 1
@@ -378,6 +383,8 @@ void handler(void) {
             CustomTrainNpulses[0] = CustomTrainNpulses[0]  - 1;
           }
           SerialUSB.write(1); // Send confirm byte
+          DACValues[0] = 128;
+          dacWrite(DACValues);
         } break;
         // Program custom stimulus 2
         case 76: {
@@ -408,6 +415,8 @@ void handler(void) {
               PrePulseTrainTimestamps[x] = SystemTime;
             }
           }
+          DACValues[0] = 128;
+          dacWrite(DACValues);
         } break;
         case 78: { 
           lcd.clear();
@@ -982,15 +991,15 @@ void UpdateSettingsMenu() {
           } break;
           case 2: {IsBiphasic[SelectedChannel-1] = ReturnUserValue(0, 1, 1, 3);} break; // biphasic (on /off)
           case 3: {Phase1Voltage[SelectedChannel-1] = ReturnUserValue(0, 255, 1, 2);} break; // Get user to input phase 1 voltage
-          case 4: {Phase1Duration[SelectedChannel-1] = ReturnUserValue(1, 72000000, 1, 1);} break; // phase 1 duration
-          case 5: {InterPhaseInterval[SelectedChannel-1] = ReturnUserValue(1, 72000000, 1, 1);} break; // inter-phase interval
+          case 4: {Phase1Duration[SelectedChannel-1] = ReturnUserValue(1, 36000000, 1, 1);} break; // phase 1 duration
+          case 5: {InterPhaseInterval[SelectedChannel-1] = ReturnUserValue(1, 36000000, 1, 1);} break; // inter-phase interval
           case 6: {Phase2Voltage[SelectedChannel-1] = ReturnUserValue(0, 255, 1, 2);} break; // Get user to input phase 2 voltage
-          case 7: {Phase2Duration[SelectedChannel-1] = ReturnUserValue(1, 72000000, 1, 1);} break; // phase 2 duration
-          case 8: {InterPulseInterval[SelectedChannel-1] = ReturnUserValue(1, 72000000, 1, 1);} break; // pulse interval
-          case 9: {BurstDuration[SelectedChannel-1] = ReturnUserValue(1, 72000000, 1, 1);} break; // burst width
-          case 10: {BurstInterval[SelectedChannel-1] = ReturnUserValue(1, 72000000, 1, 1);} break; // burst interval
-          case 11: {PulseTrainDelay[SelectedChannel-1] = ReturnUserValue(1, 72000000, 1, 1);} break; // stimulus train delay
-          case 12: {PulseTrainDuration[SelectedChannel-1] = ReturnUserValue(1, 72000000, 1, 1);} break; // stimulus train duration
+          case 7: {Phase2Duration[SelectedChannel-1] = ReturnUserValue(1, 36000000, 1, 1);} break; // phase 2 duration
+          case 8: {InterPulseInterval[SelectedChannel-1] = ReturnUserValue(1, 36000000, 1, 1);} break; // pulse interval
+          case 9: {BurstDuration[SelectedChannel-1] = ReturnUserValue(1, 36000000, 1, 1);} break; // burst width
+          case 10: {BurstInterval[SelectedChannel-1] = ReturnUserValue(1, 36000000, 1, 1);} break; // burst interval
+          case 11: {PulseTrainDelay[SelectedChannel-1] = ReturnUserValue(1, 36000000, 1, 1);} break; // stimulus train delay
+          case 12: {PulseTrainDuration[SelectedChannel-1] = ReturnUserValue(1, 36000000, 1, 1);} break; // stimulus train duration
           case 13: {byte Bit2Write = ReturnUserValue(0, 1, 1, 3);
                     byte Ch = SelectedChannel-1;
                     TriggerAddress[0][Ch] = Bit2Write;
@@ -1374,10 +1383,9 @@ boolean ReadDebouncedButton() {
    
 }
 
-unsigned int ReturnUserValue(unsigned long LowerLimit, unsigned long UpperLimit, unsigned long StepSize, byte Units) {
+unsigned int ReturnUserValue(unsigned int LowerLimit, unsigned int UpperLimit, unsigned int StepSize, byte Units) {
       // This function returns a value that the user chooses by scrolling up and down a number list with the joystick, and clicks to select the desired number.
       // LowerLimit and UpperLimit are the limits for this selection, StepSize is the smallest step size the system will scroll. Units (as for Write2Screen) codes none=0, time=1, volts=2 True/False=3
-     unsigned long ValueToAdd = 0;
      switch (SelectedAction) {
        case 2:{UserValue = IsBiphasic[SelectedChannel-1];} break;
        case 3:{UserValue = Phase1Voltage[SelectedChannel-1];} break;
@@ -1478,9 +1486,8 @@ unsigned int ReturnUserValue(unsigned long LowerLimit, unsigned long UpperLimit,
               }
             } break;
             case 1: {
-                ValueToAdd = 2*(pow(10, ((5-CursorPos)+2)));
-                if ((Digits[CursorPos] < 9) && ((UserValue+ValueToAdd) <= UpperLimit)) {
-                 UserValue = UserValue + ValueToAdd;
+                if ((Digits[CursorPos] < 9) && (UserValue < UpperLimit)) {
+                 UserValue = UserValue + 2*(pow(10, ((5-CursorPos)+2)));
                  Digits[CursorPos] = Digits[CursorPos] + 1;
                 }
             } break;
@@ -1857,13 +1864,13 @@ void WipeEEPROM() {
 void LoadDefaultParameters() {
   // This function is called on boot if the EEPROM has an invalid program (or no program).
   for (int x = 0; x < 4; x++) {
-      Phase1Duration[x] = 2;
-      InterPhaseInterval[x] = 2;
-      Phase2Duration[x] = 2;
-      InterPulseInterval[x] = 20;
+      Phase1Duration[x] = 1;
+      InterPhaseInterval[x] = 1;
+      Phase2Duration[x] = 1;
+      InterPulseInterval[x] = 10;
       BurstDuration[x] = 0;
       BurstInterval[x] = 0;
-      PulseTrainDuration[x] = 20000;
+      PulseTrainDuration[x] = 10000;
       PulseTrainDelay[x] = 0;
       IsBiphasic[x] = 0;
       Phase1Voltage[x] = 192;
