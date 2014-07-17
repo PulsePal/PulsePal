@@ -52,7 +52,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define ClickerButtonLogicHigh 0
 
 // Firmware build number
-unsigned long FirmwareVersion = 2;
+unsigned long FirmwareVersion = 4;
 
 // initialize LCD library with the numbers of the interface pins
 // Pins matched with hello world LCD sketch
