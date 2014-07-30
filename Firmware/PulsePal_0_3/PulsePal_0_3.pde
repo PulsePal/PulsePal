@@ -247,6 +247,9 @@ void handler(void) {
     Timer2.resume();
   }
   if (StimulatingState == 0) {
+    if (LastStimulatingState == 1) {
+        dacWrite(DACValues); // Update DAC
+    }
       UpdateSettingsMenu();
       SystemTime = 0;
    } else {
