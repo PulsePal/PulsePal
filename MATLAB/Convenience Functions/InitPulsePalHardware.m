@@ -125,6 +125,9 @@ if HandShakeOkByte == 75
         case 4
             PulsePalSystem.CycleFrequency = round(20000); % Loops x 20k/sec
             PulsePalSystem.MinPulseDuration = round(100); % Minimum user settable pulse duration in microseconds
+        case 5
+            PulsePalSystem.CycleFrequency = round(20000); % Loops x 20k/sec
+            PulsePalSystem.MinPulseDuration = round(100); % Minimum user settable pulse duration in microseconds
     end
 else
     disp('Error: Pulse Pal returned an incorrect handshake signature.')

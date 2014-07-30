@@ -48,6 +48,7 @@ function ConfirmBit = ProgramPulsePalParam(Channel, ParamCode, ParamValue)
 % (slower but more readable code)
 
 % convert string param code to integer
+ValidParamCodes = [1:17 128];
 if ischar(ParamCode)
     ParamCode = strcmpi(ParamCode, {'isbiphasic' 'phase1voltage' 'phase2voltage' 'phase1duration' 'interphaseinterval' 'phase2duration'...
         'interpulseinterval' 'burstduration' 'burstinterval' 'pulsetrainduration' 'pulsetraindelay'...
@@ -56,7 +57,7 @@ if ischar(ParamCode)
         error('Error: invalid parameter code.')
     end
     ParamCode = find(ParamCode);
-elseif ~((ParamCode > 0) && (ParamCode < 17))
+elseif ~ismember(ParamCode, ValidParamCodes)
     error('Error: invalid parameter code.')
 end
 
