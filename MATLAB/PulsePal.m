@@ -45,6 +45,9 @@ catch
     PulsePalSystem.PulsePalPath = PulsePalSystem.PulsePalPath(1:(length(PulsePalSystem.PulsePalPath)-10));
     PulsePalSystem.OS = system_dependent('getos');
     PulsePalSystem.OpMenuByte = 213;
+    if (nargin == 0) && (strcmp(PulsePalSystem.OS, 'Microsoft Windows XP'))
+        error('Error: On Windows XP, please specify a serial port. For instance, if Pulse Pal is on port COM3, use: PulsePal(''COM3'')');
+    end
 end
 
 try
