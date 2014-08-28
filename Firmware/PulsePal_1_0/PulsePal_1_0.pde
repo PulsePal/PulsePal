@@ -1871,7 +1871,7 @@ void LoadDefaultParameters() {
       IsBiphasic[x] = 0;
       Phase1Voltage[x] = 192;
       Phase2Voltage[x] = 192;
-      RestingVoltage[x] = 0;
+      RestingVoltage[x] = 128;
       CustomTrainID[x] = 0;
       CustomTrainTarget[x] = 0;
       CustomTrainLoop[x] = 0;
