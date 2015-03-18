@@ -89,7 +89,7 @@ handles.StimButtonGFX_Unpressed = imread('Stim_Unselected.bmp');
 handles.StimButtonGFX_Pressed = imread('Stim_Selected.bmp');
 set(handles.pushbutton7, 'CData', handles.StimButtonGFX_Unpressed);
 if (~ispc && ~ismac)
-    set(handles.listbox1, 'Position', [21 399 75 61]);
+    set(handles.listbox1, 'Position', [18 399 78 61]);
 end
 
 
