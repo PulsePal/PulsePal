@@ -20,17 +20,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 function Ports = ParseCOMString_LINUX(string)
 string = strtrim(string);
-PortStringPositions = strfind(string, '/dev');
+PortStringPositions = strfind(string, '/dev/ttyACM');
 nPorts = length(PortStringPositions);
 CandidatePorts = cell(1,nPorts);
 nGoodPorts = 0;
 for x = 1:nPorts
-    if PortStringPositions(x)+11 < length(string)
-        CandidatePort = string(PortStringPositions(x):PortStringPositions(x)+11);
-        if sum(uint8(CandidatePort)>32) == 12
-            nGoodPorts = nGoodPorts + 1;
-            CandidatePorts{nGoodPorts} = CandidatePort;
-        end
+    if PortStringPositions(x)+11 <= length(string)
+        CandidatePort = strtrim(string(PortStringPositions(x):PortStringPositions(x)+11));
+        nGoodPorts = nGoodPorts + 1;
+        CandidatePorts{nGoodPorts} = CandidatePort;
     end
 end
 Ports = CandidatePorts(1:nGoodPorts);

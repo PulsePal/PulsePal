@@ -33,8 +33,27 @@ else
         [trash, RawSerialPortList] = system('ls /dev/tty.*');
         Ports = ParseCOMString_MAC(RawSerialPortList);
     else
-        [trash, RawSerialPortList] = system('ls /dev/ttyS1*');
+        [trash, RawSerialPortList] = system('ls /dev/ttyACM*');
         Ports = ParseCOMString_LINUX(RawSerialPortList);
+        if exist(['/usr/local/MATLAB/R' version('-release') '/bin/glnxa64/java.opts']) ~= 2
+            disp(' ');
+            disp('**ALERT**')
+            disp('Linux64 detected. A file must be copied to the MATLAB root, to gain access to virtual serial ports.')
+            disp('This file only needs to be copied once.')
+            input('Pulse Pal will try to copy this file from the repository automatically. Press return... ')
+            try
+                system(['sudo cp ' PulsePalSystem.PulsePalPath 'java.opts /usr/local/MATLAB/R' version('-release') '/bin/glnxa64']);
+                disp(' ');
+                disp('**SUCCESS**')
+                disp('File copied! Please restart MATLAB and run PulsePal again.')
+                return
+            catch
+                disp('File copy error! MATLAB may not have administrative privileges.')
+                disp('Please copy /PulsePal/MATLAB/java.opts to the MATLAB java library path.')
+                disp('The path is typically /usr/local/MATLAB/R2014a/bin/glnxa64, where r2014a is your MATLAB release.')
+                return
+            end
+        end
     end
 end
 if isempty(Ports)
